@@ -642,3 +642,37 @@ msgstr "uso: reapply"
 
 msgid "the firmware keeps overriding the limits"
 msgstr "il firmware continua a sovrascrivere i limiti"
+
+#, python-format
+msgid "%s: the kernel refused %s (%s)"
+msgstr "%s: il kernel ha rifiutato %s (%s)"
+
+#, python-format
+msgid "CPU %s, %d cores, Intel backend"
+msgstr "CPU %s, %d core, backend Intel"
+
+#, python-format
+msgid "Warning: %s"
+msgstr "Attenzione: %s"
+
+msgid "boost: off at boot (turbo disabled in the BIOS): not turned on"
+msgstr "boost: spento all'avvio (turbo disattivato nel BIOS): non viene acceso"
+
+msgid "locked"
+msgstr "bloccato"
+
+msgid "locked by the BIOS"
+msgstr "bloccato dal BIOS"
+
+#, python-format
+msgid "microcode 0x%x is older than 0x%x: the fixes for the Raptor Lake instability are missing, update the BIOS"
+msgstr "il microcode 0x%x è precedente a 0x%x: mancano le correzioni per l'instabilità di Raptor Lake, aggiorna il BIOS"
+
+msgid "not programmable"
+msgstr "non programmabile"
+
+msgid "thermald is running: it may rewrite the power limits and the temperature limit set here (stop it to keep them: sudo systemctl disable --now thermald)"
+msgstr "thermald è in esecuzione: può riscrivere i limiti di potenza e il limite di temperatura impostati qui (fermalo per mantenerli: sudo systemctl disable --now thermald)"
+
+msgid "tjmax: no TCC offset on this CPU"
+msgstr "tjmax: nessun TCC offset su questa CPU"

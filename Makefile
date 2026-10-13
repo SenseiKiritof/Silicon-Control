@@ -94,7 +94,7 @@ uninstall:
 # Checks that need neither root nor hardware: the Italian catalogs against the sources, pyflakes, selftest,
 # layout in a scratch root, units, desktop entries, metainfo, the calibration window over every state
 # of the fake backend (needs a display; a fresh fake root each time), once in English, once with
-# the Italian catalog and once on the generic backend.
+# the Italian catalog, and on the generic and Intel (laptop) backends.
 check: locales
 	@v=$(VERSION); grep -q "^Version: *$$v$$" packaging/silicon-control.spec && head -1 packaging/debian/changelog | grep -qF "($$v)" \
 	  && grep -q "^pkgver=$$v$$" packaging/PKGBUILD || { echo "VERSION $$v differs in the spec, debian/changelog or PKGBUILD"; exit 1; }
@@ -112,8 +112,8 @@ check: locales
 	  rc=$$?; rm -rf $$root; exit $$rc
 	root=$$(mktemp -d) && LANGUAGE=it LC_ALL=it_IT.UTF-8 SILICON_CONTROL_LOCALEDIR=build/locale SILICONCTL_ROOT=$$root timeout 120 \
 	  python3 silicon-control --mock --smoke; rc=$$?; rm -rf $$root; exit $$rc
-	root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 SILICONCTL_ROOT=$$root SILICONCTL_FAKE_FAMILY=generic timeout 120 \
-	  python3 silicon-control --mock --smoke; rc=$$?; rm -rf $$root; exit $$rc
+	for v in generic intel-laptop; do root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 SILICONCTL_ROOT=$$root SILICONCTL_FAKE_FAMILY=$$v \
+	  timeout 120 python3 silicon-control --mock --smoke; rc=$$?; rm -rf $$root; [ $$rc = 0 ] || exit $$rc; done
 
 # README screenshots: the GUI on a fresh fake backend (fan roles, presets, the three calibrations),
 # one PNG per page plus the calibration window and a short GIF of an Auto calibration (ImageMagick),

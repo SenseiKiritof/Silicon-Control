@@ -505,8 +505,8 @@ msgstr "Verranno ammessi PPT, TDC ed EDC oltre i valori di fabbrica e FMax oltre
 msgid "PPT/TDC/EDC up to the unlock ceilings, FMax above the baseline"
 msgstr "PPT/TDC/EDC fino ai tetti di sblocco, FMax oltre la baseline"
 
-msgid "PPT: maximum package power (on APUs fast/slow PPT: short-term and sustained power) · TDC/EDC: sustained/peak current · FMax: maximum boost frequency · Tjmax: temperature at which the CPU slows down. Drag the slider or type the number, then \"Apply now\"."
-msgstr "PPT: potenza massima del package (sugli APU PPT fast/slow: potenza di breve durata e sostenuta) · TDC/EDC: corrente sostenuta/di picco · FMax: frequenza massima di boost · Tjmax: temperatura a cui la CPU rallenta. Trascina il cursore o scrivi il numero, poi \"Applica ora\"."
+msgid "PPT: maximum package power (on APUs fast/slow PPT: short-term and sustained power; on Intel PL1/PL2: long-term and short-term power) · TDC/EDC: sustained/peak current · FMax: maximum boost frequency · Tjmax: temperature at which the CPU slows down. Drag the slider or type the number, then \"Apply now\"."
+msgstr "PPT: potenza massima del package (sugli APU PPT fast/slow: potenza di breve durata e sostenuta; su Intel PL1/PL2: potenza a lungo e a breve termine) · TDC/EDC: corrente sostenuta/di picco · FMax: frequenza massima di boost · Tjmax: temperatura a cui la CPU rallenta. Trascina il cursore o scrivi il numero, poi \"Applica ora\"."
 
 msgid "Password asked again at every start"
 msgstr "Password di nuovo richiesta a ogni avvio"
@@ -524,8 +524,8 @@ msgstr ", FMax %d MHz"
 msgid "Calibrated modes measure the per-core Curve Optimizer, not available on this CPU: %s"
 msgstr "Le modalità calibrate misurano il Curve Optimizer per core, non disponibile su questa CPU: %s"
 
-msgid "Precision Boost (kernel switch): off keeps the clock at the base frequency, the frequency lever of CPUs without FMax"
-msgstr "Precision Boost (interruttore del kernel): spento tiene la frequenza base, la leva sulla frequenza delle CPU senza FMax"
+msgid "Boost (kernel switch: Precision Boost, Turbo Boost): off keeps the clock at the base frequency, the frequency lever of CPUs without FMax"
+msgstr "Boost (interruttore del kernel: Precision Boost, Turbo Boost): spento tiene la frequenza base, la leva sulla frequenza delle CPU senza FMax"
 
 msgid "Polkit rule for your user, only for Silicon Control in the local session: the password is needed once to write it, then never again"
 msgstr "Regola polkit per il tuo utente, solo per Silicon Control nella sessione locale: la prima volta la password serve per scriverla, poi mai più"
@@ -1230,3 +1230,9 @@ msgstr "Temperatura"
 
 msgid "Power"
 msgstr "Potenza"
+
+msgid "Intel: long-term power limit (PL1), the package power sustained under a long load"
+msgstr "Intel: limite di potenza a lungo termine (PL1), la potenza del package sostenuta sotto un carico lungo"
+
+msgid "Intel: short-term power limit (PL2), the package power allowed for bursts of seconds"
+msgstr "Intel: limite di potenza a breve termine (PL2), la potenza del package concessa per picchi di qualche secondo"

@@ -5,6 +5,7 @@ The only component that talks to the SMU (ryzen_smu driver) and to the fans. Sam
 grammar for the CLI, the profile files and the `serve` protocol. With SILICONCTL_ROOT set it
 uses a fake backend (the same as the selftest): no driver, no root.
 """
+import errno
 import fcntl
 import gettext
 import json
@@ -41,6 +42,10 @@ READBACK_TOL = 0.6             # W/A: the limits come back as floats from the PM
 READBACK_WAIT = 1.0            # s: the SMU updates the PM table at its own pace, not at once
 READBACK_POLL = 0.02
 REAPPLY_MAX, REAPPLY_WINDOW = 3, 120   # laptops: this many corrections within the window (s) = the firmware keeps overriding
+INTEL_PL_MIN = 5               # W: the lowest Intel PL1/PL2 ever written (the hardware takes anything: 0.125 W = a crawl)
+PL_UNLIMITED = 4000            # W: a PL near the field's maximum (≈ 4096 W) is the motherboard's "unlimited"
+RAPTOR_DESKTOP = ((6, 0xB7), (6, 0xBF))   # Raptor Lake S: never a PL above the baseline (Intel's Vmin-shift guidance)
+RAPTOR_MICROCODE = 0x12B       # 06_B7: the Vmin-shift fixes (0x125/0x129/0x12B), a warning below it
 # Fans (nct6775). Autodetect: channel at 40 % for 20 s under load; the pump raises Tctl by
 # degrees within seconds, a radiator fan warms the liquid slowly.
 # ponytail: thresholds tuned on a 360 AIO; adjust them if a small radiator gets close.
@@ -64,6 +69,10 @@ CPUFREQ = "/sys/devices/system/cpu/cpufreq"
 ETC = "/etc/siliconctl"
 STATE = "/var/lib/siliconctl"
 RUN = "/run/siliconctl"
+RAPL_ZONES = ("/sys/class/powercap/intel-rapl:0", "/sys/class/powercap/intel-rapl-mmio:0")   # MSR, and its MMIO mirror
+PL_NAMES = {"pl1": "long_term", "pl2": "short_term"}   # the powercap constraint names (the index follows the PLs present)
+PPCC = "/sys/bus/pci/devices/0000:00:04.0/power_limits"   # the OEM's PL range on DPTF laptops
+NO_TURBO = "/sys/devices/system/cpu/intel_pstate/no_turbo"
 # Ryzen Control, the predecessor: `boot` imports its state once (import_ryzen_control), and while its run directory exists
 # (the boot in which it was replaced) every SMU transaction also takes its lock (_lock).
 OLD_ETC, OLD_STATE, OLD_RUN = "/etc/ryzenctl", "/var/lib/ryzenctl", "/run/ryzenctl"
@@ -180,6 +189,10 @@ for _fam in FAMILIES.values():
 # temperature from hwmon or a thermal zone, the package power from the RAPL energy counter), no SMU command and no PM
 # table. family() returns it, with the reason, where the amd backend does not apply.
 GENERIC = {"backend": "generic", "cmd": {}, "pm_prefix": None, "pm": None, "pm_cores": {}, "verified": True, "mobile": True}
+# The Intel backend: GENERIC plus the kernel's Intel knobs where they exist (PL1/PL2 through powercap, the temperature
+# limit through the TCC offset, turbo through intel_pstate), for every GenuineIntel CPU. Never a raw MSR write. Not
+# verified on hardware: nobody here owns an Intel CPU.
+INTEL = dict(GENERIC, backend="intel", verified=False)
 # Never in any entry (sources above): voltage/VID, OC mode, PBO scalar, SMN writes. Dangerous neighbours
 # of the allowed IDs on Zen 2/3: RSMU 0x58 PBO scalar, 0x5A–0x5D OC mode/frequency, 0x61 OC VID.
 SMU_STATUS = {0: "WAITING", 1: "OK", 0xFF: "FAILED", 0xFE: "UNKNOWN_CMD",
@@ -209,6 +222,7 @@ def co_mask(core):
 
 
 _CORE_MAP = []   # computed once per process: [(physical ccd, slot)] per active core, or None
+_CPUINFO = []    # /proc/cpuinfo's fields, read once per process (init_cpu clears both)
 
 
 def core_map():
@@ -380,7 +394,14 @@ class Fake:
                 "pinnacle": {"codename": 10, "cores": 8, "ccds": 1, "pm_version": 0},          # 2700X: no SMU command
                 "cezanne": {"codename": 14, "cores": 8, "ccds": 1, "pm_version": 0x400005},    # 5700G: APU, no CO
                 "phoenix": {"codename": 21, "cores": 8, "ccds": 1, "pm_version": 0x4C0006},    # 8700G
-                "generic": {"codename": None, "cores": 8, "ccds": 1, "pm_version": 0}}         # no ryzen_smu: GENERIC
+                "generic": {"codename": None, "cores": 8, "ccds": 1, "pm_version": 0},         # no ryzen_smu: GENERIC
+                # Intel (no ryzen_smu): (model, microcode, laptop, PL1 W, its max_power, PL2 W, its max_power)
+                "intel": {"codename": None, "cores": 8, "ccds": 1, "pm_version": 0,            # Alder Lake S desktop
+                          "intel": (0x97, "0x3a", False, 125, 125, 200, 241)},
+                "intel-raptor": {"codename": None, "cores": 8, "ccds": 1, "pm_version": 0,     # Raptor Lake S, microcode
+                                 "intel": (0xB7, "0x129", False, 125, 125, 188, 253)},         # without the 0x12B fixes
+                "intel-laptop": {"codename": None, "cores": 8, "ccds": 1, "pm_version": 0,     # Alder Lake P: battery,
+                                 "intel": (0x9A, "0x430", True, 28, 28, 64, 64)}}              # PPCC, thermald
     FAN_DIR = HWMON + "/hwmon0"
 
     def __init__(self, variant=None):
@@ -399,7 +420,8 @@ class Fake:
                         "fans": {"1": {"kind": "fan", "rpm": 1200}, "2": {"kind": "pump", "rpm": 2800},
                                  "3": {"kind": "uncontrollable", "rpm": 900}},
                         # simulated autotune: below these CO values the core is unstable; boot_id changes at each reboot()
-                        "co_limits": {"7": -15, "3": -25}, "boot_id": "boot-1"}
+                        "co_limits": {"7": -15, "3": -25}, "boot_id": "boot-1",
+                        "thermald": bool(v.get("intel") and v["intel"][2])}   # an Intel laptop: thermald runs
         self.path = P("/fake_smu.json")
         self.s = json.loads(open(self.path).read() if os.path.exists(self.path) else json.dumps(self.default))
         if not os.path.exists(P(self.FAN_DIR + "/name")):
@@ -412,8 +434,9 @@ class Fake:
                     with open(d + "/core_id", "w") as fh:
                         fh.write(str(cid))
             os.makedirs(P(CPUFREQ), exist_ok=True)
-            with open(P(CPUFREQ + "/boost"), "w") as fh:   # the kernel's boost switch (acpi-cpufreq style)
-                fh.write("1")
+            if not v.get("intel"):
+                with open(P(CPUFREQ + "/boost"), "w") as fh:   # the kernel's boost switch (acpi-cpufreq style)
+                    fh.write("1")
             for cpu in range(2 * len(self.cids)):   # one cpufreq policy per CPU, as amd-pstate on the 9800X3D
                 d = P(CPUFREQ + "/policy%d" % cpu)
                 os.makedirs(d)
@@ -423,7 +446,37 @@ class Fake:
                         fh.write(str(khz))
             os.makedirs(P("/proc"), exist_ok=True)
             with open(P("/proc/cpuinfo"), "w") as fh:
-                fh.write("processor\t: 0\nmodel name\t: Fake CPU 8-Core Processor\n")
+                fh.write("processor\t: 0\nmodel name\t: Fake CPU 8-Core Processor\n" if not v.get("intel") else
+                         "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: %d\n"
+                         "model name\t: Fake Intel CPU\nmicrocode\t: %s\n" % v["intel"][:2])
+            if v.get("intel"):
+                self._make_intel(*v["intel"][2:])
+
+    def _make_intel(self, laptop, pl1, pl1_max, pl2, pl2_max):
+        """The Intel kernel interfaces: both powercap zones (MSR and its MMIO mirror), coretemp with TjMax 100 °C, the
+        processor thermal device's TCC offset, intel_pstate's no_turbo; a laptop adds a battery, the OEM's PPCC
+        range and a running thermald."""
+        files = {NO_TURBO: 0, HWMON + "/hwmon1/name": "coretemp", HWMON + "/hwmon1/temp1_label": "Package id 0",
+                 HWMON + "/hwmon1/temp1_input": 52000, HWMON + "/hwmon1/temp1_crit": 100000,
+                 "/sys/bus/pci/devices/0000:00:04.0/tcc_offset_degree_celsius": 0}
+        for zone in RAPL_ZONES:
+            files.update({zone + "/name": "package-0", zone + "/enabled": 1, zone + "/constraint_2_name": "peak_power"})
+            for n, (name, w, top) in enumerate((("long_term", pl1, pl1_max), ("short_term", pl2, pl2_max))):
+                files.update({"%s/constraint_%d_name" % (zone, n): name, "%s/constraint_%d_power_limit_uw" % (zone, n): w * 10 ** 6,
+                              "%s/constraint_%d_max_power_uw" % (zone, n): top * 10 ** 6})
+        if laptop:
+            files.update({"/sys/class/power_supply/BAT0/type": "Battery", "/sys/class/power_supply/ADP1/type": "Mains",
+                          "/sys/class/power_supply/ADP1/online": 1, PPCC + "/power_limit_0_min_uw": 15 * 10 ** 6})
+        for path, value in files.items():
+            os.makedirs(os.path.dirname(P(path)), exist_ok=True)
+            with open(P(path), "w") as fh:
+                fh.write("%s\n" % value)
+
+    def sysfs_check(self, path):
+        """The kernel's error for an attribute the test locked (`locked`: {path: errno})."""
+        err = self.s.get("locked", {}).get(path)
+        if err:
+            raise OSError(err, os.strerror(err))
 
     def core(self, mask):
         """Core index addressed by an SMU core mask, or None: a wrong mask (8 << 20 on two CCDs, the slot
@@ -608,6 +661,7 @@ def init_cpu():
     TOPO = read_topology()
     CORES = len(TOPO)
     _CORE_MAP.clear()
+    _CPUINFO.clear()
 
 
 init_cpu()
@@ -620,7 +674,8 @@ def family():
     on GENERIC (its allowlist is empty); no readable topology is refused in full."""
     if not CORES:
         raise Err(_("CPU topology not readable (/sys/devices/system/cpu)"))
-    if "siliconctl.generic" in kernel_cmdline().split():
+    forced = "siliconctl.generic" in kernel_cmdline().split()
+    if forced:
         why = _("forced by the kernel parameter siliconctl.generic")
     else:
         try:
@@ -637,6 +692,8 @@ def family():
                     "that is not supported: only the laptop APUs are") % (system_battery(), FAMILIES[code]["name"])
         elif code is not None:
             return FAMILIES[code]
+    if not forced and cpuinfo().get("vendor_id") == "GenuineIntel":
+        return dict(INTEL, name=cpu_model(), why=None)
     return dict(GENERIC, name=cpu_model(), why=why)
 
 
@@ -647,17 +704,34 @@ def kernel_cmdline():
         return ""
 
 
+def cpuinfo():
+    """The first value of every field of /proc/cpuinfo (vendor_id, cpu family, model, model name, microcode; on ARM
+    "Model" or "Hardware")."""
+    if not _CPUINFO:
+        out = {}
+        try:
+            with open(P("/proc/cpuinfo")) as f:
+                for line in f:
+                    key, _sep, value = line.partition(":")
+                    if value.strip():
+                        out.setdefault(key.strip(), value.strip())
+        except OSError:
+            pass
+        _CPUINFO.append(out)
+    return _CPUINFO[0]
+
+
 def cpu_model():
-    """The model name in /proc/cpuinfo (on ARM its "Model" or "Hardware" line), or "CPU"."""
+    info = cpuinfo()
+    return info.get("model name") or info.get("Model") or info.get("Hardware") or "CPU"
+
+
+def intel_model():
+    """(family, model) of an Intel CPU, (0, 0) if unknown."""
     try:
-        with open(P("/proc/cpuinfo")) as f:
-            for line in f:
-                key, _sep, value = line.partition(":")
-                if key.strip() in ("model name", "Model", "Hardware") and value.strip():
-                    return value.strip()
-    except OSError:
-        pass
-    return "CPU"
+        return int(cpuinfo()["cpu family"]), int(cpuinfo()["model"])
+    except (KeyError, ValueError):
+        return 0, 0
 
 
 def power_supplies():
@@ -817,7 +891,10 @@ def boost_files():
 
 
 def boost_get():
-    """Switch state: "on", "off", or None without a switch (or with policies that disagree)."""
+    """Switch state: "on", "off", or None without a switch (or with policies that disagree). intel_pstate has no boost
+    file: its no_turbo is the inverted switch."""
+    if not boost_files() and os.path.exists(P(NO_TURBO)):
+        return {"0": "on", "1": "off"}.get(read_text(NO_TURBO))
     vals = {read_text(f) for f in boost_files()}
     return {frozenset({"1"}): "on", frozenset({"0"}): "off"}.get(frozenset(vals))
 
@@ -828,9 +905,18 @@ def cmd_boost(ctx, args):
     if args not in (["on"], ["off"]):
         raise Err(_("usage: boost on|off"))
     files = boost_files()
-    if not files:
+    if not files and not os.path.exists(P(NO_TURBO)):
         raise Err(_("boost switch not available (no cpufreq boost control)"))
+    if args == ["on"] and check_cpu()["backend"] == "intel":
+        try:
+            off = load_baseline(strict=False).get("boost") == "off"
+        except Err:
+            off = False
+        if off:   # the BIOS turned turbo off: not turned on from here
+            raise Err(_("boost: off at boot (turbo disabled in the BIOS): not turned on"))
     if not ctx.get("dry"):
+        if not files:   # intel_pstate: EPERM when the BIOS disabled turbo
+            sysfs_write(NO_TURBO, "0" if args == ["on"] else "1")
         for f in files:
             with open(P(f), "w") as fh:
                 fh.write("1" if args == ["on"] else "0")
@@ -888,7 +974,7 @@ def values_from_lines(lines):
     for t in lines:
         if t[0] == "co" and len(t) == CORES + 1:
             v["co"] = [int(x) for x in t[1:]]
-        elif t[0] in ("ppt", "fast", "slow", "tdc", "edc", "fmax", "tjmax") and len(t) == 2:
+        elif t[0] in ("ppt", "fast", "slow", "tdc", "edc", "fmax", "tjmax", "pl1", "pl2") and len(t) == 2:
             v[t[0]] = int(t[1])
         elif t[0] == "shaper" and len(t) == 5:
             v["shaper"][int(t[1])] = [int(x) for x in t[2:]]
@@ -909,7 +995,7 @@ def read_fmax():
     """FMax in MHz: the SMU's, or on the generic backend cpufreq's maximum (the highest of the policies); None on
     families without the command (Zen 3 and older) or without cpufreq."""
     fam = family()
-    if fam["backend"] == "generic":
+    if fam["backend"] != "amd":
         mhz = cpufreq_khz("scaling_max_freq")
         return max(mhz) // 1000 if mhz else None
     return smu("fmax_get")[0] if "fmax_get" in fam["cmd"] else None
@@ -935,9 +1021,170 @@ def cpufreq_set_max(mhz):
             f.write(str(top if mhz >= top // 1000 else mhz * 1000))
 
 
+# ---- Intel (backend intel): PL1/PL2 through powercap, the TCC offset, thermald ----------------------
+def sysfs_write(path, value):
+    """One write to a kernel attribute; its error is the refusal (ENODATA: a PL locked by the BIOS; EPERM/EACCES: a
+    TCC offset locked or not programmable)."""
+    try:
+        if FAKE:
+            FAKE.sysfs_check(path)
+        with open(P(path), "w") as f:
+            f.write(str(value))
+    except OSError as e:
+        why = {errno.ENODATA: _("locked by the BIOS"), errno.EPERM: _("locked"), errno.EACCES: _("not programmable")}
+        raise Err(_("%s: the kernel refused %s (%s)") % (path, value, why.get(e.errno, os.strerror(e.errno or 0))))
+
+
+def pl_zones(key):
+    """The constraint file prefixes of `key` (pl1, pl2) in the powercap zones that have it: the MSR one and its MMIO
+    mirror (the hardware applies the lower), matched by name."""
+    out = []
+    for zone in RAPL_ZONES:
+        for n in range(3):
+            try:
+                if read_text("%s/constraint_%d_name" % (zone, n)) == PL_NAMES[key]:
+                    out.append("%s/constraint_%d_" % (zone, n))
+                    break
+            except OSError:
+                break
+    return out
+
+
+def pl_get(key):
+    """The effective PL in W (the lower zone); None without one, or when a zone's `enabled` reads 0 (PL1 locked by the
+    BIOS reads 0 there, or disabled)."""
+    files = pl_zones(key)
+    try:
+        if not files or any(read_text(f.rsplit("/", 1)[0] + "/enabled") != "1" for f in files):
+            return None
+        return min(int(read_text(f + "power_limit_uw")) for f in files) / 1e6
+    except (OSError, ValueError):
+        return None
+
+
+def pl_set(key, watts):
+    """The same value in both zones, as coreboot programs them; a zone that refuses (locked) puts the ones already
+    written back first, so a refusal never leaves the zones apart."""
+    done = []
+    try:
+        for f in pl_zones(key):
+            done.append((f, read_text(f + "power_limit_uw")))
+            sysfs_write(f + "power_limit_uw", int(watts) * 1000000)
+    except Err:
+        for f, old in done[:-1]:
+            sysfs_write(f + "power_limit_uw", old)
+        raise
+
+
+def pl_max(key):
+    """The kernel's max_power_uw of `key` (TDP for PL1, POWER_INFO's maximum for PL2) in W, the highest zone; None."""
+    try:
+        top = max([int(read_text(f + "max_power_uw")) for f in pl_zones(key)] or [0])
+    except (OSError, ValueError):
+        return None
+    return top / 1e6 if top else None
+
+
+def pl_floor(base):
+    """The lowest PL1/PL2 allowed (W): INTEL_PL_MIN, half of the reference PL1 (the baseline's, or the kernel's
+    max_power_uw when the board's is unlimited) and the OEM's PPCC minimum on DPTF laptops."""
+    ref = base.get("pl1") if base.get("pl1", 0) < PL_UNLIMITED else pl_max("pl1")
+    try:
+        ppcc = int(read_text(PPCC + "/power_limit_0_min_uw")) / 1e6
+    except (OSError, ValueError):
+        ppcc = 0
+    return int(max(INTEL_PL_MIN, round(ref / 2) if ref else 0, ppcc))
+
+
+def tcc_file():
+    """The TCC offset in °C: the processor thermal device's attribute (restored after resume), otherwise the "TCC
+    Offset" cooling device's cur_state; None without one, or on kernels before 5.14 (no range nor lock check)."""
+    if tuple(int(x) for x in re.findall(r"\d+", os.uname().release)[:2]) < (5, 14):
+        return None
+    pci = P("/sys/bus/pci/devices")
+    for d in sorted(os.listdir(pci) if os.path.isdir(pci) else []):
+        if os.path.exists("%s/%s/tcc_offset_degree_celsius" % (pci, d)):
+            return "/sys/bus/pci/devices/%s/tcc_offset_degree_celsius" % d
+    cool = P("/sys/class/thermal")
+    for d in sorted(os.listdir(cool) if os.path.isdir(cool) else []):
+        try:
+            if d.startswith("cooling_device") and read_text("/sys/class/thermal/%s/type" % d) == "TCC Offset":
+                return "/sys/class/thermal/%s/cur_state" % d
+        except OSError:
+            pass
+    return None
+
+
+def tjmax_hw():
+    """TjMax in °C: coretemp's package temp1_crit; None."""
+    for d in sorted(os.listdir(P(HWMON))):
+        try:
+            if read_text("%s/%s/name" % (HWMON, d)) == "coretemp":
+                return int(read_text("%s/%s/temp1_crit" % (HWMON, d))) // 1000
+        except (OSError, ValueError):
+            pass
+    return None
+
+
+def tcc_tjmax():
+    """The temperature limit in °C: TjMax − the TCC offset; None without both."""
+    f, top = tcc_file(), tjmax_hw()
+    try:
+        return top - int(read_text(f)) if f and top else None
+    except (OSError, ValueError):
+        return None
+
+
+def tcc_max_offset(f):
+    """The widest offset written: 63 (6 bits; the kernel's default of 7 bits on MTL/LNL/ARL is uncertain), within the
+    cooling device's max_state."""
+    try:
+        return min(63, int(read_text(f.rsplit("/", 1)[0] + "/max_state"))) if f.endswith("/cur_state") else 63
+    except (OSError, ValueError):
+        return 0
+
+
+def thermald_running():
+    """thermald drives RAPL and the TCC offset as cooling devices on DPTF laptops: what is written may be rewritten."""
+    if FAKE:
+        return bool(FAKE.s.get("thermald"))
+    for pid in os.listdir("/proc"):
+        try:
+            if pid.isdigit() and read_text("/proc/%s/comm" % pid) == "thermald":
+                return True
+        except OSError:
+            pass
+    return False
+
+
+def intel_warnings():
+    """What the user must know on this Intel CPU: thermald rewriting the limits, Raptor Lake without the fixes."""
+    out = []
+    if thermald_running():
+        out.append(_("thermald is running: it may rewrite the power limits and the temperature limit set here (stop it "
+                     "to keep them: sudo systemctl disable --now thermald)"))
+    try:
+        mc = int(cpuinfo().get("microcode", "0"), 16)
+    except ValueError:
+        mc = 0
+    if intel_model() == RAPTOR_DESKTOP[0] and mc < RAPTOR_MICROCODE:
+        out.append(_("microcode 0x%x is older than 0x%x: the fixes for the Raptor Lake instability are missing, update "
+                     "the BIOS") % (mc, RAPTOR_MICROCODE))
+    return out
+
+
+def limits_now():
+    """The current value of every limit this CPU has, by profile key: the PM table's on AMD; powercap's and the TCC
+    offset's on Intel."""
+    if family()["backend"] == "intel":
+        return {k: v for k, v in (("pl1", pl_get("pl1")), ("pl2", pl_get("pl2")), ("tjmax", tcc_tjmax())) if v is not None}
+    lim = read_limits()
+    return {k: lim[pk] for k, pk in LIMIT_PM.items() if pk in lim}
+
+
 def fmax_floor():
     """The lowest FMax allowed (MHz): FMAX_MIN for the SMU's, the hardware minimum for cpufreq's."""
-    if family()["backend"] != "generic":
+    if family()["backend"] == "amd":
         return FMAX_MIN
     low = cpufreq_khz("cpuinfo_min_freq")
     return -(-max(low) // 1000) if low else FMAX_MIN
@@ -960,6 +1207,7 @@ def read_limits(pm=None):
 # Each limit and where the PM table reports it (readback); fast before slow: raising back keeps slow ≤ fast.
 LIMIT_PM = {"ppt": "ppt_limit", "fast": "fast_limit", "slow": "slow_limit", "tdc": "tdc_limit", "edc": "edc_limit",
             "tjmax": "thm_limit"}
+LIMIT_KEYS = tuple(LIMIT_PM) + ("pl1", "pl2")   # what `reapply` rewrites after the firmware (Intel: limits_now)
 
 
 def capture_lines():
@@ -970,6 +1218,9 @@ def capture_lines():
     for key, pm_key in LIMIT_PM.items():
         if pm_key in lim:
             lines.append("%s %d" % (key, round(lim[pm_key])))
+    if family()["backend"] == "intel":   # raising back: PL2 first, so that PL1 never exceeds it
+        now = limits_now()
+        lines += ["%s %d" % (k, round(now[k])) for k in ("pl2", "pl1", "tjmax") if k in now]
     # Curve Shaper excluded: on the 9800X3D (SMU 98.81.0) 0xA6 replies OK but 0x84 does not change,
     # so it cannot be verified; it remains only as an experimental command (`shaper probe`).
     power, boost = power_get(), boost_get()
@@ -1054,10 +1305,13 @@ def cap_of(base, key, unlock):
         return min(base[key], family().get("tjmax_max", TJMAX_ABS_MAX), TJMAX_ABS_MAX)
     if key == "fmax":
         cap = base[key] + (FMAX_UNLOCK_EXTRA if unlock else 0)
-        top = cpufreq_khz("cpuinfo_max_freq") if family()["backend"] == "generic" else []
+        top = cpufreq_khz("cpuinfo_max_freq") if family()["backend"] != "amd" else []
         return min(cap, max(top) // 1000) if top else cap
     if key in ("fast", "slow"):   # APUs: no unlock, the stock limits are the ceiling
         return base[key]
+    if key in ("pl1", "pl2"):   # Intel: unlock up to the kernel's max_power_uw, never on Raptor Lake desktop
+        top = pl_max(key) if unlock and intel_model() not in RAPTOR_DESKTOP else None
+        return max(base[key], int(top)) if top else base[key]
     hard = {"ppt": UNLOCK_PPT, "tdc": UNLOCK_TDC, "edc": UNLOCK_EDC}[key]
     return max(base[key], hard) if unlock else base[key]
 
@@ -1124,6 +1378,44 @@ def limit_setter(key, pm_key, cmd_name, unit, lo):
     return cmd
 
 
+def pl_setter(key):
+    def cmd(ctx, args):
+        if len(args) != 1:
+            raise Err(_("usage: %s <%s>") % (key, "W"))
+        v = to_int(args[0], key)
+        if check_cpu()["backend"] != "intel":
+            raise Err(_("%s is not available on this CPU") % key)
+        base = load_baseline()
+        cap = cap_of(base, key, load_settings()["unlock"])   # no baseline for the key (locked, absent): refused
+        if v != base[key]:
+            check_range(key, v, pl_floor(base), cap, " W")
+        if not ctx.get("dry") and not ctx.get("profile"):
+            reapply_off()
+        got = write_verify(ctx, key, float(v), lambda x: pl_set(key, x), lambda: pl_get(key), float(base[key]), near)
+        return dict({key: got}, **({"warning": intel_warnings()} if intel_warnings() and not ctx.get("dry") else {}))
+    return cmd
+
+
+def cmd_tjmax(ctx, args):
+    """`tjmax <°C>`: the SMU's on AMD (AMD_TJMAX), the TCC offset on Intel: only ever lowered, the stock value always
+    allowed back."""
+    if check_cpu()["backend"] != "intel":
+        return AMD_TJMAX(ctx, args)
+    if len(args) != 1:
+        raise Err(_("usage: %s <%s>") % ("tjmax", "°C"))
+    v = to_int(args[0], "tjmax")
+    f, top, base = tcc_file(), tjmax_hw(), load_baseline()
+    cap = cap_of(base, "tjmax", load_settings()["unlock"])   # no baseline (no TCC offset): refused
+    if f is None or top is None:
+        raise Err(_("tjmax: no TCC offset on this CPU"))
+    if v != base["tjmax"]:
+        check_range("tjmax", v, max(TJMAX_MIN, top - tcc_max_offset(f)), cap, " °C")
+    if not ctx.get("dry") and not ctx.get("profile"):
+        reapply_off()
+    got = write_verify(ctx, "tjmax", v, lambda x: sysfs_write(f, top - x), tcc_tjmax, base["tjmax"])
+    return dict({"tjmax": got}, **({"warning": intel_warnings()} if intel_warnings() and not ctx.get("dry") else {}))
+
+
 def cmd_co(ctx, args):
     """`co <core> <v>` | `co all <v>` | `co v0 … v7`."""
     if len(args) == CORES:
@@ -1158,7 +1450,7 @@ def cmd_fmax(ctx, args):
         raise Err(_("FMax is not available on this CPU (no SMU command for it): use `boost off` to cap the clock"))
     base = load_baseline()
     check_range("fmax", v, fmax_floor(), cap_of(base, "fmax", load_settings()["unlock"]), " MHz")
-    write = cpufreq_set_max if fam["backend"] == "generic" else lambda x: smu("fmax_set", x & 0xFFFFF)
+    write = cpufreq_set_max if fam["backend"] != "amd" else lambda x: smu("fmax_set", x & 0xFFFFF)
     return {"fmax": write_verify(ctx, "fmax", v, write, read_fmax, base["fmax"])}
 
 
@@ -1290,6 +1582,7 @@ def cmd_trust(ctx, args):
 def cmd_status(ctx, args):
     fam = check_cpu()
     lim = read_limits()
+    intel = limits_now() if fam["backend"] == "intel" else {}
     s = load_settings()
     try:
         base = load_baseline(strict=False)
@@ -1303,8 +1596,9 @@ def cmd_status(ctx, args):
         "pm_version": hex((FAKE.pm() if FAKE else pm_raw())[0] or 0) if fam["backend"] == "amd" else None,
         "co": read_co(), "fmax": read_fmax(), "shaper": read_shaper(),
         "limits": {"ppt": lim.get("ppt_limit"), "tdc": lim.get("tdc_limit"), "edc": lim.get("edc_limit"),
-                   "tjmax": lim.get("thm_limit"), "stapm": lim.get("stapm_limit"),   # APUs: STAPM read only
-                   "fast": lim.get("fast_limit"), "slow": lim.get("slow_limit")},
+                   "tjmax": lim.get("thm_limit", intel.get("tjmax")), "stapm": lim.get("stapm_limit"),   # APUs: STAPM read only
+                   "fast": lim.get("fast_limit"), "slow": lim.get("slow_limit"), "pl1": intel.get("pl1"), "pl2": intel.get("pl2")},
+        "warnings": intel_warnings() if fam["backend"] == "intel" else [],
         "now": {"ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(), "tdc": lim.get("tdc"),
                 "tctl": tctl(), "tctl_pm": lim.get("tctl")},
         "power": power_get(), "boost": boost_get(),
@@ -1320,11 +1614,12 @@ def cmd_status(ctx, args):
 def caps(base, unlock):
     """Allowed ranges (min, max) for the GUI: same logic as cap_of."""
     out = {"co": list(co_range()), "fan_step_ms": [0, FAN_STEP_MAX_MS], "fan_step_tol_ms": FAN_STEP_TOL_MS}
-    for key, lo in (("ppt", PPT_MIN), ("fast", APU_MIN_W), ("slow", APU_MIN_W), ("tdc", TDC_MIN), ("edc", EDC_MIN),
-                    ("fmax", None), ("tjmax", TJMAX_MIN)):
+    for key, lo in (("ppt", PPT_MIN), ("pl1", None), ("pl2", None), ("fast", APU_MIN_W), ("slow", APU_MIN_W),
+                    ("tdc", TDC_MIN), ("edc", EDC_MIN), ("fmax", None), ("tjmax", TJMAX_MIN)):
         if key in base:
-            lo = fmax_floor() if lo is None else lo
-            out[key] = [lo, cap_of(base, key, unlock)]
+            lo = (fmax_floor() if key == "fmax" else pl_floor(base)) if lo is None else lo
+            # the stock value is always allowed back (an Intel TjMax or an APU Tctl limit of 100 °C over TJMAX_ABS_MAX)
+            out[key] = [lo, max(cap_of(base, key, unlock), base[key])]
     return out
 
 
@@ -1356,6 +1651,7 @@ def cmd_telemetry(ctx, args):
     pm = version, t = pm_table()
     m = pm_cores(version, t)
     lim = read_limits(pm)
+    intel = limits_now() if fam["backend"] == "intel" else {}
     cores = []
     for c in range(CORES):
         try:
@@ -1390,9 +1686,9 @@ def cmd_telemetry(ctx, args):
                              "role": info.get("role", "sconosciuto"), "name": info.get("name")})
     return {"tctl": tctl(), "tccd": tccd,   # APUs: the fast PPT's power; GENERIC: RAPL's
             "ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(), "backend": fam["backend"],
-            "ppt_limit": lim.get("ppt_limit", lim.get("fast_limit")),
+            "ppt_limit": lim.get("ppt_limit", lim.get("fast_limit", intel.get("pl1"))),   # Intel: PL1
             "tdc": lim.get("tdc"), "tdc_limit": lim.get("tdc_limit"), "edc_limit": lim.get("edc_limit"),
-            "tjmax": lim.get("thm_limit"), "fmax": read_fmax(), "cores": cores, "fans": fans, "power": power_get(),
+            "tjmax": lim.get("thm_limit", intel.get("tjmax")), "fmax": read_fmax(), "cores": cores, "fans": fans, "power": power_get(),
             "reapply": reapply_state() or None}   # laptops: limits held on the other power source, re-applying stopped
 
 
@@ -1400,27 +1696,29 @@ def fmt_status(st):
     f = lambda v, u="": _("n/a") if v is None else ("%g%s" % (v, u) if isinstance(v, (int, float)) else str(v))
     b = st["baseline"] or {}
     bl = lambda k, u="": (" (base %s)" % f(b.get(k), u)) if k in b else ""
-    generic = st.get("backend") == "generic"
+    generic, intel = st.get("backend") == "generic", st.get("backend") == "intel"
     lines = [
         (_("CPU %s, %d cores, generic backend: %s") % (st["cpu"], st["cores"], st["why_generic"]) if generic else
+         _("CPU %s, %d cores, Intel backend") % (st["cpu"], st["cores"]) if intel else
          _("CPU %s, %d cores, SMU %s, PM table %s") % (st["cpu"], st["cores"], st["smu_version"], st["pm_version"]))
         + ("" if st["verified"] else _("  (family not verified on hardware yet: run hwtest)")),
         ("CO      " + " ".join("%+d" % v for v in st["co"]) + ("  (base %s)" % " ".join("%+d" % v for v in b["co"]) if "co" in b else ""))
         if st["co"] is not None else _("CO      n/a: %s") % st["co_unavailable"],
         ("Shaper  " + "  ".join("t%d:%+d/%+d/%+d" % (i, *v) for i, v in enumerate(st["shaper"])) + _("  (experimental, not verified)"))
-        if st["shaper"] is not None else None if generic else _("Shaper  n/a on this CPU"),
+        if st["shaper"] is not None else None if generic or intel else _("Shaper  n/a on this CPU"),
         "FMax    %s MHz%s" % (f(st["fmax"]), bl("fmax", " MHz")),
         _("Limits  ") + "  ".join("%s %s%s" % (name, f(st["limits"].get(k), u), bl(k, u)) for k, name, u in (
+            (("pl1", "PL1", " W"), ("pl2", "PL2", " W"), ("tjmax", "Tjmax", " °C")) if intel else
             (("stapm", "STAPM", " W"), ("fast", _("fast PPT"), " W"), ("slow", _("slow PPT"), " W"))
             if st["limits"].get("fast") is not None else (("ppt", "PPT", " W"),))
-            + (("tdc", "TDC", " A"), ("edc", "EDC", " A"), ("tjmax", "Tjmax", " °C"))) if not generic else None,
+            + ((("tdc", "TDC", " A"), ("edc", "EDC", " A"), ("tjmax", "Tjmax", " °C")) if not intel else ())) if not generic else None,
         _("Now     PPT %s  TDC %s  Tctl %s") % (f(st["now"]["ppt"], " W"), f(st["now"]["tdc"], " A"), f(st["now"]["tctl"], " °C")),
         _("Power   %s%s, boost %s%s") % (st["power"] or _("n/a"), bl("power"), st["boost"] or _("n/a"), bl("boost")),
         _("Baseline %s, unlock %s, autostart %s, profile %s") % (
             _("of this boot") if st["baseline_fresh"] else (_("stale") if b else _("missing")),
             "ON" if st["unlock"] else "off", "ON" if st["autostart"] else "off", st["profile"] or "-"),
     ]
-    lines = [l for l in lines if l is not None]
+    lines = [l for l in lines if l is not None] + [_("Warning: %s") % w for w in st.get("warnings", [])]
     if st.get("power_source"):
         src, rp = {"ac": _("AC power"), "battery": _("battery")}, st.get("reapply") or {}
         lines.append(_("Laptop  on %s, baseline captured on %s") % (src[st["power_source"]], src.get(st["baseline_source"], "?"))
@@ -1429,7 +1727,7 @@ def fmt_status(st):
 
 
 # ---- Profiles ----------------------------------------------------------------------------
-PROFILE_CMDS = {"co", "ppt", "fast", "slow", "tdc", "edc", "fmax", "tjmax", "power", "boost", "fan"}  # shaper: experimental, excluded
+PROFILE_CMDS = {"co", "ppt", "fast", "slow", "tdc", "edc", "fmax", "tjmax", "pl1", "pl2", "power", "boost", "fan"}  # shaper: experimental, excluded
 FAN_PROFILE_SUBCMDS = ("step", "curve", "pump")   # `fan <N> step …` | `fan <N> curve …` | `fan <N> pump auto|<pct>`
 NAME_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
 
@@ -1563,14 +1861,14 @@ def cmd_autostart(ctx, args):
 # ponytail: fixed ratios relative to the baseline (quiet ≈ AMD's 65 W eco on a 162 W part, auto ≈ 105 W eco);
 # the Auto calibration replaces them with values measured on this CPU, the Eco one adds the measured CO.
 PRESETS = {
-    "quiet": {"ppt": 0.55, "slow": 0.6, "fast": 0.6, "tdc": 0.63, "edc": 0.83, "fmax": -400, "tjmax": 80, "power": "balanced", "fan": (10000, 5000)},
+    "quiet": {"pl1": 0.55, "pl2": 0.6, "ppt": 0.55, "slow": 0.6, "fast": 0.6, "tdc": 0.63, "edc": 0.83, "fmax": -400, "tjmax": 80, "power": "balanced", "fan": (10000, 5000)},
     # eco: same values as quiet; `autotune eco` adds Auto's validated CO and the fan curve
-    "eco": {"ppt": 0.55, "slow": 0.6, "fast": 0.6, "tdc": 0.63, "edc": 0.83, "fmax": -400, "tjmax": 80, "power": "balanced", "fan": (10000, 5000)},
-    "auto": {"ppt": 0.88, "slow": 0.88, "fast": 0.88, "tdc": 0.92, "edc": 0.94, "fmax": 0, "tjmax": None, "power": "balanced", "fan": (3000, 2000)},
-    "performance": {"ppt": 1.0, "slow": 1.0, "fast": 1.0, "tdc": 1.0, "edc": 1.0, "fmax": 0, "tjmax": None, "power": "performance", "fan": None},
+    "eco": {"pl1": 0.55, "pl2": 0.6, "ppt": 0.55, "slow": 0.6, "fast": 0.6, "tdc": 0.63, "edc": 0.83, "fmax": -400, "tjmax": 80, "power": "balanced", "fan": (10000, 5000)},
+    "auto": {"pl1": 0.88, "pl2": 0.88, "ppt": 0.88, "slow": 0.88, "fast": 0.88, "tdc": 0.92, "edc": 0.94, "fmax": 0, "tjmax": None, "power": "balanced", "fan": (3000, 2000)},
+    "performance": {"pl1": 1.0, "pl2": 1.0, "ppt": 1.0, "slow": 1.0, "fast": 1.0, "tdc": 1.0, "edc": 1.0, "fmax": 0, "tjmax": None, "power": "performance", "fan": None},
     # boost: same values as performance until `autotune boost` replaces them (pushed CO, limits and
     # FMax at the allowed caps, stability check and measured gain)
-    "boost": {"ppt": 1.0, "slow": 1.0, "fast": 1.0, "tdc": 1.0, "edc": 1.0, "fmax": 0, "tjmax": None, "power": "performance", "fan": None},
+    "boost": {"pl1": 1.0, "pl2": 1.0, "ppt": 1.0, "slow": 1.0, "fast": 1.0, "tdc": 1.0, "edc": 1.0, "fmax": 0, "tjmax": None, "power": "performance", "fan": None},
 }
 
 
@@ -1591,8 +1889,13 @@ def preset_lines(name, base):
         raise Err(over)
     eco = dict(zip(("ppt", "tdc", "edc"), family().get("eco_limits", ())))   # AMD's Eco mode: Quiet/Eco in that case
     lines = ["co " + " ".join(str(v) for v in base["co"])] if "co" in base else []   # presets do not touch the CO
-    for key, floor in (("ppt", PPT_MIN), ("slow", APU_MIN_W), ("fast", APU_MIN_W), ("tdc", TDC_MIN), ("edc", EDC_MIN)):
-        if key in base:   # APUs: slow before fast, so that lowering never leaves fast below slow
+    for key, floor in (("ppt", PPT_MIN), ("pl1", None), ("pl2", None), ("slow", APU_MIN_W), ("fast", APU_MIN_W),
+                       ("tdc", TDC_MIN), ("edc", EDC_MIN)):
+        if key in ("pl1", "pl2") and key in base:   # Intel: an unlimited board's PL scaled from the kernel's max_power_uw
+            ref = base[key] if base[key] < PL_UNLIMITED or pr[key] >= 1 else pl_max(key)
+            if ref:
+                lines.append("%s %d" % (key, ref if pr[key] >= 1 else max(pl_floor(base), round(ref * pr[key]))))
+        elif key in base:   # APUs: slow before fast, Intel: PL1 before PL2, so that lowering keeps the shorter one higher
             v = eco[key] if over and pr[key] < 1 and key in eco else max(floor, round(base[key] * pr[key]))
             lines.append("%s %d" % (key, v))
     if "fmax" in base:
@@ -2919,7 +3222,7 @@ def reapply_mark(applied=None):
     if power_source() and s["autostart"] and s["profile"] and applied in (None, s["profile"]):
         try:
             base = load_baseline(strict=False)
-            want = any(t[0] in LIMIT_PM and t[0] in base and t[1:] != [str(base[t[0]])] for t in profile_lines(s["profile"]))
+            want = any(t[0] in LIMIT_KEYS and t[0] in base and t[1:] != [str(base[t[0]])] for t in profile_lines(s["profile"]))
         except Err:
             pass
     if want:
@@ -2955,9 +3258,9 @@ def cmd_reapply(ctx, args):
         write_atomic(P(REAPPLY_STATE), json.dumps(st))
     if held:
         return None
-    lim = read_limits()
+    lim = limits_now()
     drifted = [t for t in profile_lines(s["profile"])
-               if len(t) == 2 and LIMIT_PM.get(t[0]) in lim and not near(lim[LIMIT_PM[t[0]]], to_int(t[1], t[0]))]
+               if len(t) == 2 and t[0] in lim and not near(lim[t[0]], to_int(t[1], t[0]))]
     if not drifted:
         return None
     now = time.time()
@@ -3382,10 +3685,11 @@ def cmd_hwtest(ctx, args):
              else ("co", None, _("skipped: %s") % no_co),
              ("fmax", [str(max(fmax_floor(), base["fmax"] - 200))], [str(base["fmax"])]) if "fmax" in base
              else ("fmax", None, _("skipped: not available on this CPU"))]
-    for key, floor, delta in (("ppt", PPT_MIN, 12), ("slow", APU_MIN_W, 3), ("fast", APU_MIN_W, 3), ("tdc", TDC_MIN, 10),
-                              ("edc", EDC_MIN, 10), ("tjmax", TJMAX_MIN, 10)):
-        if key + "_set" not in family()["cmd"]:   # not a function of this CPU (fast/slow on desktops, GENERIC)
+    for key, floor, delta in (("ppt", PPT_MIN, 12), ("pl1", None, 5), ("pl2", None, 5), ("slow", APU_MIN_W, 3),
+                              ("fast", APU_MIN_W, 3), ("tdc", TDC_MIN, 10), ("edc", EDC_MIN, 10), ("tjmax", TJMAX_MIN, 10)):
+        if key not in base and key + "_set" not in family()["cmd"]:   # not a function of this CPU (fast/slow on desktops)
             continue
+        floor = pl_floor(base) if floor is None else floor
         if key in base:
             steps.append((key, [str(max(floor, base[key] - delta))], [str(base[key])]))
         else:
@@ -3614,7 +3918,7 @@ COMMANDS = {
     "edc": limit_setter("edc", "edc_limit", "edc_set", "A", EDC_MIN),
     "fast": limit_setter("fast", "fast_limit", "fast_set", "W", APU_MIN_W),
     "slow": limit_setter("slow", "slow_limit", "slow_set", "W", APU_MIN_W),
-    "tjmax": limit_setter("tjmax", "thm_limit", "tjmax_set", "°C", TJMAX_MIN),
+    "tjmax": cmd_tjmax, "pl1": pl_setter("pl1"), "pl2": pl_setter("pl2"),
     "fmax": cmd_fmax, "shaper": cmd_shaper, "power": cmd_power, "boost": cmd_boost, "unlock": cmd_unlock,
     "apply": cmd_apply, "profile": cmd_profile, "use": cmd_use, "autostart": cmd_autostart, "trust": cmd_trust,
     "default": cmd_default, "boot": cmd_boot, "shutdown": cmd_shutdown, "resume": cmd_resume,
@@ -3622,6 +3926,7 @@ COMMANDS = {
     "fan": cmd_fan, "telemetry": cmd_telemetry, "preset": cmd_preset, "autotune": cmd_autotune, "reapply": cmd_reapply,
 }
 FORMAT = {"status": fmt_status, "hwtest": fmt_hwtest, "fan": fmt_fan}
+AMD_TJMAX = limit_setter("tjmax", "thm_limit", "tjmax_set", "°C", TJMAX_MIN)
 
 
 def run(argv, ctx=None):
@@ -3662,7 +3967,8 @@ def selftest():
     # status
     st = run(["status"])
     assert st["co"] == [0] * CORES and st["fmax"] == 5225 and st["baseline"] is None
-    assert st["limits"] == {"ppt": 162.0, "tdc": 120.0, "edc": 180.0, "tjmax": 95.0, "stapm": None, "fast": None, "slow": None}
+    assert st["limits"] == {"ppt": 162.0, "tdc": 120.0, "edc": 180.0, "tjmax": 95.0, "stapm": None, "fast": None, "slow": None,
+                            "pl1": None, "pl2": None} and st["warnings"] == []
     assert "Granite Ridge" in fmt_status(st)
     expect_err(["nope"], "unknown")
     assert FAKE.smu(MP1, 0x10, [0])[0] == 0xFE   # outside the allowlist → UNKNOWN_CMD
@@ -4397,6 +4703,7 @@ def selftest():
     selftest_takeover()
     selftest_transport()
     selftest_generic()
+    selftest_intel()
     print("selftest ok (%s)" % ROOT)
 
 
@@ -5107,6 +5414,109 @@ def selftest_generic():
         assert tctl() == 61.0
     finally:
         FAKE = fake
+
+
+def selftest_intel():
+    """Phase 3, step 6: the Intel backend (GenuineIntel, no ryzen_smu), never an SMU command: PL1/PL2 written to both
+    powercap zones and read back, floors and ceilings, unlock up to max_power_uw but never on Raptor Lake desktop, a
+    zone locked by the BIOS (ENODATA) refusing without leaving the zones apart, `enabled` 0 leaving the PLs out, an
+    unlimited board's presets scaled from max_power_uw, the temperature limit through the TCC offset (only lowered),
+    turbo through no_turbo (never turned on when the BIOS had it off), presets, hwtest, thermald's warning and a
+    laptop's re-apply after the firmware."""
+    global ROOT, FAKE
+
+    def no_smu(*_a):
+        raise AssertionError("SMU command or PM table read on the Intel backend")
+
+    def fresh(variant):
+        global ROOT, FAKE
+        ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-%s-" % variant)
+        FAKE = Fake(variant)
+        init_cpu()
+        FAKE.smu = FAKE.pm = FAKE.smn = no_smu
+        assert "baseline_error" not in run(["boot"])
+
+    def uw(zone, n):
+        return int(read_text("%s/constraint_%d_power_limit_uw" % (RAPL_ZONES[zone], n)))
+
+    def reboot(**files):   # a new boot, with what the BIOS set this time
+        for f in os.listdir(P(RUN)):
+            os.remove(P(RUN + "/" + f))
+        for path, v in files.items():
+            write_atomic(P(path), str(v))
+        assert "baseline_error" not in run(["boot"])
+    tcc = "/sys/bus/pci/devices/0000:00:04.0/tcc_offset_degree_celsius"
+    # ---- an Alder Lake desktop ----
+    fresh("intel")
+    st = run(["status"])
+    assert st["backend"] == "intel" and st["cpu"] == "Fake Intel CPU" and not st["verified"] and st["warnings"] == [], st
+    assert "Intel backend" in fmt_status(st) and "PL1 125 W" in fmt_status(st), fmt_status(st)
+    base = run(["baseline", "show"])
+    assert (base["pl1"], base["pl2"], base["tjmax"], base["fmax"], base["boost"]) == (125, 200, 100, 5271, "on"), base
+    assert st["caps"]["pl1"] == [62, 125] and st["caps"]["pl2"] == [62, 200] and st["caps"]["tjmax"] == [TJMAX_MIN, 100], st
+    assert run(["pl1", "100"]) == {"pl1": 100.0} and uw(0, 0) == uw(1, 0) == 100 * 10 ** 6   # both zones
+    for argv, err in ((["pl1", "61"], "out of range"), (["pl1", "126"], "out of range"), (["pl2", "201"], "out of range"),
+                      (["tjmax", "96"], "out of range"), (["tjmax", "59"], "out of range"), (["ppt", "100"], "baseline"),
+                      (["co", "0", "-5"], "not available"), (["autotune", "start", "eco"], "Curve Optimizer")):
+        expect_err(argv, err)
+    assert run(["tjmax", "85"]) == {"tjmax": 85} and read_text(tcc) == "15"
+    assert run(["tjmax", "100"]) == {"tjmax": 100} and read_text(tcc) == "0"   # the stock value always allowed back
+    run(["unlock", "on"])   # up to the kernel's max_power_uw
+    assert run(["status"])["caps"]["pl2"] == [62, 241] and run(["pl2", "241"]) == {"pl2": 241.0}
+    expect_err(["pl2", "242"], "out of range")
+    run(["pl2", "200"])
+    run(["unlock", "off"])
+    FAKE.s["locked"] = {RAPL_ZONES[1] + "/constraint_0_power_limit_uw": errno.ENODATA}   # the MMIO zone locked by the BIOS
+    FAKE.save()
+    expect_err(["pl1", "90"], "locked by the BIOS")
+    assert uw(0, 0) == uw(1, 0) == 100 * 10 ** 6, "the zones left apart"   # the MSR zone put back
+    FAKE.s["locked"] = {tcc: errno.EPERM}
+    FAKE.save()
+    expect_err(["tjmax", "80"], "locked")
+    FAKE.s["locked"] = {}
+    FAKE.save()
+    assert run(["boost", "off"]) == {"boost": "off"} and read_text(NO_TURBO) == "1"
+    assert run(["boost", "on"]) == {"boost": "on"} and read_text(NO_TURBO) == "0"
+    r = run(["hwtest"])
+    assert r["pl1"] == "ok (120 -> 125)" and r["pl2"] == "ok (195 -> 200)" and r["tjmax"] == "ok (90 -> 100)", r
+    assert r["fmax"] == "ok (5071 -> 5271)" and r["boost"].startswith("ok") and r["esito"] == "ok" and "ppt" not in r, r
+    pl = run(["preset", "quiet", "show"])["lines"]   # PL1 before PL2: lowering keeps PL2 ≥ PL1
+    assert pl.index("pl1 69") < pl.index("pl2 120") and "tjmax 80" in pl and "fmax 4871" in pl, pl
+    assert not any(l.split()[0] in ("co", "ppt", "tdc") for l in pl), pl
+    run(["preset", "quiet"])
+    assert run(["apply", "quiet"])["applied"] and uw(1, 0) == 69 * 10 ** 6 and uw(1, 1) == 120 * 10 ** 6 and read_text(tcc) == "20"
+    run(["default"])
+    assert uw(0, 0) == 125 * 10 ** 6 and uw(0, 1) == 200 * 10 ** 6 and read_text(tcc) == "0"
+    # ---- the next boot: an unlimited board (presets from max_power_uw), turbo off in the BIOS, PL1 locked (enabled 0) ----
+    reboot(**{RAPL_ZONES[0] + "/constraint_1_power_limit_uw": 4095 * 10 ** 6, RAPL_ZONES[1] + "/constraint_1_power_limit_uw": 4095 * 10 ** 6,
+              NO_TURBO: 1})
+    pl = run(["preset", "quiet", "show"])["lines"]
+    assert "pl2 145" in pl and "pl2 4095" in run(["preset", "performance", "show"])["lines"], pl   # 60 % of 241 W
+    expect_err(["boost", "on"], "turbo disabled in the BIOS")
+    reboot(**{RAPL_ZONES[0] + "/enabled": 0, NO_TURBO: 0})
+    assert "pl1" not in run(["baseline", "show"]) and "pl1" not in run(["status"])["caps"]
+    expect_err(["pl1", "100"], "baseline")
+    # ---- a Raptor Lake desktop without the 0x12B microcode: never above the baseline, a warning ----
+    fresh("intel-raptor")
+    assert "0x129" in run(["status"])["warnings"][0]
+    run(["unlock", "on"])
+    assert run(["status"])["caps"]["pl2"] == [62, 188]
+    expect_err(["pl2", "200"], "out of range")
+    # ---- an Alder Lake laptop: PPCC's floor, thermald's warning, the firmware's PL1 re-applied ----
+    fresh("intel-laptop")
+    st = run(["status"])
+    assert st["power_source"] == "ac" and "thermald" in st["warnings"][0] and st["caps"]["pl1"] == [15, 28], st
+    out = run(["pl1", "20"])
+    assert out["pl1"] == 20.0 and "thermald" in out["warning"][0], out
+    run(["profile", "save", "cool", "pl1 20", "pl2 40"])
+    for argv in (["use", "cool"], ["autostart", "on"], ["apply", "cool"]):
+        run(argv)
+    assert os.path.exists(P(REAPPLY_WANTED)) and run(["reapply"]) is None   # nothing drifted
+    write_atomic(P(RAPL_ZONES[0] + "/constraint_0_power_limit_uw"), str(28 * 10 ** 6))   # the MSR zone alone: the lower
+    assert run(["reapply"]) is None                                                       # (MMIO) still applies
+    for zone in RAPL_ZONES:   # the firmware puts its PL1 back in both
+        write_atomic(P(zone + "/constraint_0_power_limit_uw"), str(28 * 10 ** 6))
+    assert run(["reapply"])["reapplied"] == ["pl1 20"] and uw(0, 0) == uw(1, 0) == 20 * 10 ** 6
 
 
 def main():
