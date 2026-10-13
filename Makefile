@@ -97,7 +97,8 @@ uninstall:
 # the Italian catalog, and on the generic and Intel (laptop) backends.
 check: locales
 	@v=$(VERSION); grep -q "^Version: *$$v$$" packaging/silicon-control.spec && head -1 packaging/debian/changelog | grep -qF "($$v)" \
-	  && grep -q "^pkgver=$$v$$" packaging/PKGBUILD || { echo "VERSION $$v differs in the spec, debian/changelog or PKGBUILD"; exit 1; }
+	  && grep -q "^pkgver=$$v$$" packaging/PKGBUILD && grep -qF "VERSION = \"$$v\"" siliconctl \
+	  || { echo "VERSION $$v differs in the spec, debian/changelog, PKGBUILD or siliconctl"; exit 1; }
 	python3 po/check.py $(wildcard po/*/it.po)
 	python3 -m pyflakes siliconctl silicon-control po/check.py po/msgfmt.py   # undefined names and the like (dnf install python3-pyflakes)
 	python3 siliconctl selftest
