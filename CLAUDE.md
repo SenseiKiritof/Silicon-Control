@@ -34,10 +34,13 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   limits, TCC offset, turbo) on fakes only; step 7 (the Intel undervolt) stopped, not implemented (plan revision 6):
   never write an OC-mailbox module. Released as v0.3.0 (local tag) after the AMD regression on the 9800X3D. Phase 4
   (plan revision 7): the CPU report and the local hwtest record (step 8), the in-app check (step 9), README by vendor
-  and the issue template (step 10) done; released as v0.4.0 (local tag) after the check on the 9800X3D, which found
-  `bg` repeating its callbacks (fixed). Next, the rest of step 11: the user creates `SenseiKiritof/Silicon-Control`
-  (with the `cpu-report` label) and pushes, then the issue link of the check is tried.
-- No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
+  and the issue template (step 10) done; released as v0.4.0 after the check on the 9800X3D, which found `bg`
+  repeating its callbacks (fixed), and published (step 11): the release workflow built the packages (identical to the
+  local ones), the check's issue link opens the prefilled issue. Phase 4 done. Step 12 (plan revision 8: the README
+  for users, `docs/TECHNICAL.md` for the details) is on `dev`, not released yet.
+- Remote `origin` = https://github.com/SenseiKiritof/Silicon-Control (public, created by the user at phase 4): `main`,
+  `dev` and the tags v0.1.0–v0.4.0 pushed; releases v0.3.0 and v0.4.0 (v0.1.0 and v0.2.0 have none). The issue
+  template applies the `cpu-report` label only if the repository has it (missing on 2026-10-13).
 
 ## Working with the user
 
@@ -330,8 +333,8 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
 
 ## Workflow
 
-- Branches `dev` (development) and `main` (releases only). No remote yet; when the user creates it, the
-  user pushes (`git push origin main dev vX.Y.Z`), never push from here.
+- Branches `dev` (development) and `main` (releases only). The user pushes (`git push origin main dev vX.Y.Z`),
+  never push from here; GitHub shows `main`'s README, so a README change reaches it with the next release.
 - Release: `main` gets a `--no-ff` merge of `dev` titled "Version X.Y.Z: …" and the annotated tag `vX.Y.Z`
   ("Silicon Control X.Y.Z"); the tag version is `VERSION` in the Makefile, the RPM spec, debian/changelog and
   PKGBUILD (`make check` enforces it). A pushed tag starts the release workflow (RPM, deb, Arch built in
