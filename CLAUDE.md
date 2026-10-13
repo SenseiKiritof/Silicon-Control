@@ -85,7 +85,8 @@ Auto's undervolt: Eco now reuses the validated CO and the FMax sweep is gone.
 
 ## Inherited from Ryzen Control (the imported code, old names)
 
-Accurate for the code as imported; update these sections as the plan's steps change it.
+Accurate for the code as imported; update these sections as the plan's steps change it. Phase numbers in
+them are Ryzen Control's, not this plan's.
 
 ### Layout
 
@@ -121,15 +122,28 @@ dependency beyond PyGObject, no test framework.
 Without hardware or root (run before every commit):
 
 ```sh
-python3 ryzenctl selftest       # fake backend; encodings, validation, ceilings, profiles, baseline, crash-guard, serve
-make check                      # selftest + layout in a temporary root + systemd-analyze verify + desktop-file-validate + appstreamcli
+python3 ryzenctl selftest       # fake backend; encodings, validation, ceilings, profiles, baseline, crash-guard, serve (~3 s)
+make check                      # VERSION match + Italian catalogs + selftest + layout in a temp root + units/udev/desktop/metainfo validation + GUI smoke en/it
 make driver-check               # builds the driver in a copy outside the repo (kbuild does NOT accept spaces in the path: `make -C ryzen_smu` fails here)
 make rpm                        # tarball from HEAD (only what is committed) + RPM in dist/; rpmlint NOT installed
 make deb / make arch            # the same tarball, .deb / Arch package built and checked in a podman container
 RYZENCTL_ROOT=/tmp/fake python3 ryzenctl boot   # CLI on the fake backend (state in $ROOT/fake_smu.json)
-python3 ryzen-control --mock    # GUI without driver or pkexec (phase 3)
+RYZENCTL_ROOT=$(mktemp -d) RYZENCTL_FAKE_FAMILY=vermeer python3 ryzenctl status   # another fake CPU: a key of Fake.VARIANTS, a fresh root each
+python3 ryzen-control --mock    # GUI without driver or pkexec, on the repo's ryzenctl (state kept in $XDG_RUNTIME_DIR/ryzen-control-mock unless RYZENCTL_ROOT)
+make locales && RYZEN_CONTROL_LOCALEDIR=build/locale LANGUAGE=it python3 ryzen-control --mock   # the repo's Italian catalogs (otherwise the installed ones)
 make screenshots                # docs/screenshots/*.png from a fresh fake backend (regenerate after visible UI changes)
 ```
+
+No per-case runner: `selftest` always runs everything (its main cases, then `selftest_watchdog`,
+`selftest_variants`, `selftest_laptop`) and the first failing `assert` stops it with a traceback. `make check`
+opens the GUI twice on the display (`--mock --smoke`, English and Italian, 120 s timeout each): it needs the
+graphical session. Without `RYZENCTL_ROOT`, `ryzenctl` acts on the real machine, and `ryzen-control` without
+`--mock` runs `pkexec` on the `ryzenctl` next to it (the repo's) against the real CPU: both are the user's to run.
+
+Translations: no GNU gettext tools here (`xgettext`, `msgmerge`): a new `_()` string gets its entry in
+`po/<domain>/it.po` by hand. `po/msgfmt.py` skips untranslated and fuzzy entries silently; `po/check.py` (in
+`make check`) fails on an `it.po` that misses a `_("…")` literal of the source named after its domain, has it
+fuzzy or keeps an unused entry, and on a `_()` of a non-literal.
 
 On hardware (the user runs them, with `! command`; commit after their result): checklist in
 README "Hardware verification".
@@ -151,8 +165,8 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
   so `profile show`, `apply` and the boot always see and write a complete state.
 - **A single command grammar** (`co 7 -3`, `ppt 88`, `fmax 4800`, `shaper 4 -5 -5 0`,
   `power balanced`, …) used identically by the CLI, profile file lines and the `serve` protocol
-  (one JSON-array line per request, one `{"ok":…}` line as reply; `boot/shutdown/resume/serve`
-  denied via serve). A new command = a `cmd_*` function + an entry in `COMMANDS` (+ in
+  (one JSON-array line per request, one `{"ok":…}` line as reply; `boot/shutdown/resume/serve/selftest`
+  denied via serve, `SERVE_DENY`). A new command = a `cmd_*` function + an entry in `COMMANDS` (+ in
   `PROFILE_CMDS` if allowed in profiles) + a case in the selftest.
 - **`ryzenctl` is the trust boundary**: the GUI validates nothing definitive, it sends and shows
   the errors. `serve` is started once per session (a single pkexec prompt; `trust on` writes a
