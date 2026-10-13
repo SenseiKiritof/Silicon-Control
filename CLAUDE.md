@@ -129,7 +129,7 @@ Without hardware or root (run before every commit):
 
 ```sh
 python3 siliconctl selftest     # fake backend; encodings, validation, ceilings, profiles, baseline, crash-guard, serve (~3 s)
-make check                      # VERSION match + Italian catalogs + selftest + layout in a temp root + units/udev/desktop/metainfo validation + GUI smoke en/it
+make check                      # VERSION match + Italian catalogs + pyflakes + selftest + layout in a temp root + units/udev/desktop/metainfo validation + GUI smoke en/it/generic
 make driver-check               # builds the driver in a copy outside the repo (kbuild does NOT accept spaces in the path: `make -C ryzen_smu` fails here)
 make rpm                        # tarball from HEAD (only what is committed) + RPM in dist/; rpmlint NOT installed
 make deb / make arch            # the same tarball, .deb / Arch package built and checked in a podman container
@@ -155,7 +155,7 @@ On hardware (the user runs them, with `! command`; commit after their result): c
 README "Hardware verification".
 
 Not on this machine: `dpkg-buildpackage`, `lintian`, `namcap` (run in containers: `make deb`, `make arch`),
-`stress-ng`. The deb/Arch packages are container-tested only: the README says so.
+`stress-ng`. `make check` needs `python3-pyflakes` (a development tool, never a runtime dependency). The deb/Arch packages are container-tested only: the README says so.
 
 ### Architecture
 
