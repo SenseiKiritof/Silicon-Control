@@ -2,7 +2,7 @@ Name:           silicon-control
 # DKMS module version: changes only with the source in ryzen_smu/ (= DRV_VERSION in the Makefile);
 # this way an app release does not rebuild the module.
 %global drv_version 0.4.1
-Version:        0.4.0
+Version:        0.4.1
 Release:        1%{?dist}
 Summary:        Power limits, boost, undervolt and fans of the CPU, calibrated per chip
 # App GPL-3.0-or-later; bundled ryzen_smu driver (ryzen_smu/) GPL-2.0-only.
@@ -107,7 +107,7 @@ dkms remove -m ryzen_smu -v %{drv_version} -q --all --rpm_safe_upgrade || :
 
 %files -f siliconctl.lang -f silicon-control.lang
 %license LICENSE ryzen_smu/LICENSE
-%doc README.md ryzen_smu/UPSTREAM.md
+%doc README.md docs/TECHNICAL.md ryzen_smu/UPSTREAM.md
 %{_bindir}/siliconctl
 %{_bindir}/silicon-control
 %{_datadir}/applications/io.github.senseikiritof.SiliconControl.desktop
@@ -129,6 +129,10 @@ dkms remove -m ryzen_smu -v %{drv_version} -q --all --rpm_safe_upgrade || :
 %ghost %config(noreplace) %{_sysconfdir}/dkms/framework.conf.d/ryzen-smu-akmods.conf
 
 %changelog
+* Tue Oct 13 2026 senseikiritof <tonifede98@gmail.com> - 0.4.1-1
+- Documentation: the README for users (features, processors, installing from the release packages, usage, safety),
+  the technical details in docs/TECHNICAL.md, also installed with the documentation
+
 * Tue Oct 13 2026 senseikiritof <tonifede98@gmail.com> - 0.4.0-1
 - The CPU check: on a CPU not verified yet (or on the generic backend) the Monitor offers "Check this CPU" (also
   in Preferences): hwtest, then a report of the CPU and its interfaces to send as a prefilled GitHub issue, copy

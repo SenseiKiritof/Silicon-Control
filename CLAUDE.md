@@ -34,9 +34,13 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   limits, TCC offset, turbo) on fakes only; step 7 (the Intel undervolt) stopped, not implemented (plan revision 6):
   never write an OC-mailbox module. Released as v0.3.0 (local tag) after the AMD regression on the 9800X3D. Phase 4
   (plan revision 7): the CPU report and the local hwtest record (step 8), the in-app check (step 9), README by vendor
-  and the issue template (step 10) done; next step 11, release 0.4.0 after the user's check, then the GitHub
-  repository the user creates.
-- No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
+  and the issue template (step 10) done; released as v0.4.0 after the check on the 9800X3D, which found `bg`
+  repeating its callbacks (fixed), and published (step 11): the release workflow built the packages (identical to the
+  local ones), the check's issue link opens the prefilled issue. Phase 4 done. Step 12 (plan revision 8: the README
+  for users, `docs/TECHNICAL.md` for the details) is on `dev`, not released yet.
+- Remote `origin` = https://github.com/SenseiKiritof/Silicon-Control (public, created by the user at phase 4): `main`,
+  `dev` and the tags v0.1.0–v0.4.0 pushed; releases v0.3.0 and v0.4.0 (v0.1.0 and v0.2.0 have none). The issue
+  template applies the `cpu-report` label only if the repository has it (missing on 2026-10-13).
 
 ## Working with the user
 
@@ -108,6 +112,9 @@ them are Ryzen Control's, not this plan's.
 - `ryzen_smu/` — upstream driver (amkillam/ryzen_smu, commit d298366) **copied**, not a subtree
   (git-subtree is not installed): origin, excluded files, local change to `smu.c` (PM table
   0x6211xx/0x6212xx) and update procedure in `ryzen_smu/UPSTREAM.md`.
+- `README.md` is for users (features, processors in brief, install from the release packages, usage, safety in
+  brief); `docs/TECHNICAL.md` has the rest (components, every family, the CLI, the calibration, the safety rules, the
+  hardware checklist, building, development). A user-visible change updates both where they cover it.
 - `Makefile` — the only source of the installed layout (`install` = `install-cli` + `install-gui`
   if present + `install-dkms-src`; `DESTDIR`, `PREFIX`; `APPID` is only used for the file names in
   `data/`, the id `io.github.senseikiritof.SiliconControl` is written inside the files). Every package is
@@ -157,7 +164,7 @@ Translations: no GNU gettext tools here (`xgettext`, `msgmerge`): a new `_()` st
 fuzzy or keeps an unused entry, and on a `_()` of a non-literal.
 
 On hardware (the user runs them, with `! command`; commit after their result): checklist in
-README "Hardware verification".
+`docs/TECHNICAL.md` "Hardware verification".
 
 Not on this machine: `dpkg-buildpackage`, `lintian`, `namcap` (run in containers: `make deb`, `make arch`),
 `stress-ng`. `make check` needs `python3-pyflakes` (a development tool, never a runtime dependency). The deb/Arch packages are container-tested only: the README says so.
@@ -326,8 +333,8 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
 
 ## Workflow
 
-- Branches `dev` (development) and `main` (releases only). No remote yet; when the user creates it, the
-  user pushes (`git push origin main dev vX.Y.Z`), never push from here.
+- Branches `dev` (development) and `main` (releases only). The user pushes (`git push origin main dev vX.Y.Z`),
+  never push from here; GitHub shows `main`'s README, so a README change reaches it with the next release.
 - Release: `main` gets a `--no-ff` merge of `dev` titled "Version X.Y.Z: …" and the annotated tag `vX.Y.Z`
   ("Silicon Control X.Y.Z"); the tag version is `VERSION` in the Makefile, the RPM spec, debian/changelog and
   PKGBUILD (`make check` enforces it). A pushed tag starts the release workflow (RPM, deb, Arch built in

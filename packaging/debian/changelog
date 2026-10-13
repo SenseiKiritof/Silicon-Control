@@ -1,3 +1,11 @@
+silicon-control (0.4.1) unstable; urgency=medium
+
+  * Documentation: the README for users (features, processors, installing
+    from the release packages, usage, safety), the technical details in
+    docs/TECHNICAL.md.
+
+ -- senseikiritof <tonifede98@gmail.com>  Tue, 13 Oct 2026 23:49:36 +0200
+
 silicon-control (0.4.0) unstable; urgency=medium
 
   * The CPU check: on a CPU not verified yet (or on the generic backend)
