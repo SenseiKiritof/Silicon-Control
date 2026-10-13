@@ -3,7 +3,9 @@
 # `install-locales` are the pieces.
 VERSION := 0.1.0
 # DKMS module version: bump ONLY when ryzen_smu/ changes (a new /usr/src directory means a
-# rebuild + dracut, about a minute at upgrade time). Same value as %drv_version in the spec.
+# rebuild + dracut, about a minute at upgrade time). Same value as %drv_version in the spec. Also bump the
+# driver's MODULE_VERSION: dkms does not install a module whose version equals the installed one, and the old
+# package's %preun then removes the only installed copy (seen in the takeover of ryzen-control with 0.4.2).
 DRV_VERSION := 0.4.1
 APPID := io.github.senseikiritof.SiliconControl
 PREFIX ?= /usr

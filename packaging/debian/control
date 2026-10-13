@@ -12,6 +12,7 @@ Architecture: all
 Depends: ${misc:Depends}, python3 (>= 3.9), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.5), pkexec, polkitd,
  systemd, kmod
 Conflicts: ryzen-control
+Replaces: ryzen-control
 Recommends: stress-ng, libnotify-bin
 Description: power limits, boost, undervolt and fans of the CPU, calibrated per chip
  Successor of Ryzen Control; supported so far: AMD Ryzen. Per-core Curve

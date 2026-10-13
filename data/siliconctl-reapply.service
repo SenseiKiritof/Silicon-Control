@@ -4,6 +4,7 @@ Description=Silicon Control: re-applies the profile's power limits that the lapt
 # a laptop with "Apply at startup" and a profile that changes a limit (siliconctl writes it): nothing runs elsewhere.
 After=siliconctl.service
 ConditionKernelCommandLine=!siliconctl.off
+ConditionKernelCommandLine=!ryzenctl.off
 ConditionPathExists=/run/siliconctl/reapply-wanted
 
 [Service]

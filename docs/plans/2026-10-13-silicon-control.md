@@ -7,6 +7,11 @@ Control; alternatives were Tempra and Calibro).
 Revision 2 (2026-10-13): the open decisions confirmed by the user, one question each (moved to "Decisions
 taken").
 
+Revision 3 (2026-10-13): phase 0, step 2 without the `DRV_VERSION` bump. Measured on the 9800X3D: with 0.4.2 (same
+source) dkms 3.4.3 refused to install a module whose `MODULE_VERSION` (0.1.7) equals the installed one, and
+ryzen-control's `%preun` then removed `ryzen_smu/0.4.1`, the only installed copy. With the same version the new
+package's `dkms add --rpm_safe_upgrade` cancels that removal, as in Ryzen Control's own upgrades.
+
 ## Context
 
 Ryzen Control (`../Ryzen Control`, v0.8.0, public on GitHub) is a Ryzen Master-style tool for Linux: a root
@@ -112,7 +117,7 @@ backends nobody here can run stay "expected".
 | # | Commit | Verification |
 |---|---|---|
 | 1 | `chore: rename to Silicon Control` — binaries, app id, `/etc`, `/var/lib`, `/run` paths, kernel parameter `siliconctl.off`, gettext domains (msgids with the name, Italian catalogs), systemd units, udev rule, modprobe and polkit files (action id), desktop, metainfo (`<replaces>` the old id), icon, tray, env vars of the fake backend (`SILICONCTL_ROOT`, `SILICONCTL_FAKE_FAMILY`), packaging (spec, debian, PKGBUILD, build scripts), release workflow, README, screenshots | `make check`, `make rpm` / `deb` / `arch`, GUI smoke en/it; `grep -ri ryzen` finds only the driver, the AMD family names, the migration code and history notes |
-| 2 | `feat: take over from Ryzen Control` — packages replace `ryzen-control` (RPM `Obsoletes`, deb `Replaces/Breaks`, Arch `replaces/conflicts`); bump `DRV_VERSION` so the old package's `%preun`, which removes `ryzen_smu/0.4.1` from dkms, cannot remove the new module; `boot` imports `/etc/ryzenctl` (settings, profiles) and `/var/lib/ryzenctl` (calibration data, `crashed` marker) when the new directories do not exist yet; the polkit trust rule and the user's login autostart entry renamed; the old kernel parameter `ryzenctl.off` still honoured | selftest with a fake Ryzen Control state; the user installs over Ryzen Control 0.8.0 on the 9800X3D: profiles and calibrations kept (`new-auto` applies), `hwtest` ok, one service only |
+| 2 | `feat: take over from Ryzen Control` — packages replace `ryzen-control` (RPM `Obsoletes`, deb `Replaces/Breaks`, Arch `replaces/conflicts`); `DRV_VERSION` unchanged, so the `dkms add --rpm_safe_upgrade` of the new `%post` cancels the `dkms remove` of the old `%preun` (revision 3); `boot` imports `/etc/ryzenctl` (settings, profiles) and `/var/lib/ryzenctl` (calibration data, `crashed` marker) when the new directories do not exist yet; the polkit trust rule and the user's login autostart entry renamed; the old kernel parameter `ryzenctl.off` still honoured | selftest with a fake Ryzen Control state; the user installs over Ryzen Control 0.8.0 on the 9800X3D: profiles and calibrations kept (`new-auto` applies), `hwtest` ok, one service only |
 
 ### Phase 1 — backends and capabilities, AMD unchanged
 

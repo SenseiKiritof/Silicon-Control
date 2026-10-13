@@ -1,9 +1,10 @@
 [Unit]
 Description=Silicon Control: CPU baseline, crash-guard and profile at boot
 # The module is blacklisted (modprobe.d): only this service loads it, so the kernel parameter
-# siliconctl.off is a complete escape hatch.
+# siliconctl.off (or Ryzen Control's ryzenctl.off, still honoured) is a complete escape hatch.
 After=dkms.service systemd-modules-load.service
 ConditionKernelCommandLine=!siliconctl.off
+ConditionKernelCommandLine=!ryzenctl.off
 
 [Service]
 Type=oneshot

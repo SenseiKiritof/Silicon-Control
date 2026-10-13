@@ -225,6 +225,27 @@ def ui_save(prefs):
     os.replace(UI_FILE + ".tmp", UI_FILE)
 
 
+def import_ryzen_control(cfg):
+    """The takeover of Ryzen Control for this user, once, from the XDG config dir `cfg` (the root state is imported by
+    `siliconctl boot`): its login entry, whose program is gone, moved to ours with the new names; its preferences copied."""
+    for old, new, move in ((os.path.join(cfg, "autostart", "org.ryzencontrol.RyzenControl.desktop"), LOGIN_DESKTOP, True),
+                           (os.path.join(cfg, "ryzen-control", "ui.json"), UI_FILE, False)):
+        try:
+            if os.path.exists(old) and not os.path.exists(new):
+                with open(old) as f:
+                    text = f.read()
+                for a, b in (("org.ryzencontrol.RyzenControl", APP_ID), ("ryzen-control", "silicon-control"),
+                             ("Ryzen Control", "Silicon Control")):
+                    text = text.replace(a, b)
+                os.makedirs(os.path.dirname(new), exist_ok=True)
+                with open(new, "w") as f:
+                    f.write(text)
+            if move and os.path.exists(old):
+                os.remove(old)
+        except OSError:
+            pass   # the old file stays; the switch can be set again by hand
+
+
 def fmt(v, unit=""):
     return _("n/a") if v is None else ("%g%s" if isinstance(v, (int, float)) else "%s%s") % (v, unit)
 
@@ -2939,6 +2960,21 @@ class App(Adw.Application):
             fans.show({"canali": chans[:1]})
             assert not any(c.get_parent() for c in cards), "old cards kept on reload"
             assert not fans.unknown.get_visible(), "unknown section shown without unknown channels"
+            # the takeover of Ryzen Control: its login entry moved with the new names, its preferences copied
+            cfg = os.path.join(MOCK_DIR, "ryzen-control-config")
+            old_login = os.path.join(cfg, "autostart", "org.ryzencontrol.RyzenControl.desktop")
+            for path, text in ((old_login, "Name=Ryzen Control\nExec=ryzen-control --tray\nIcon=org.ryzencontrol.RyzenControl\n"),
+                               (os.path.join(cfg, "ryzen-control", "ui.json"), '{"tray": true}')):
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w") as f:
+                    f.write(text)
+            for path in (LOGIN_DESKTOP, UI_FILE):
+                if os.path.exists(path):
+                    os.remove(path)
+            import_ryzen_control(cfg)
+            with open(LOGIN_DESKTOP) as f:
+                assert f.read() == "Name=Silicon Control\nExec=silicon-control --tray\nIcon=%s\n" % APP_ID, "login entry not taken over"
+            assert ui_load() == {"tray": True} and not os.path.exists(old_login), "preferences not copied or old entry kept"
         except Exception:
             import traceback
             traceback.print_exc()
@@ -2958,6 +2994,8 @@ def main():
             sys.exit("usage: silicon-control --mock --screenshots DIR")
         os.makedirs(shots, exist_ok=True)
         del argv[i:i + 2]
+    if not mock:
+        import_ryzen_control(GLib.get_user_config_dir())
     app = App(mock, smoke and mock, shots, tray)
     rc = app.run([a for a in argv if a not in ("--mock", "--smoke", "--tray")])
     sys.exit(1 if app.smoke_failed else rc)

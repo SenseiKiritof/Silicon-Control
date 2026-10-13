@@ -12,6 +12,7 @@ depends=('python>=3.9' 'python-gobject' 'glib2' 'gtk4' 'libadwaita>=1.5' 'pango'
          'polkit' 'systemd' 'dkms')
 makedepends=('git')
 conflicts=('ryzen-control')
+replaces=('ryzen-control')
 optdepends=('stress-ng: load tests of the calibrations'
             'libnotify: notification at login after a crash')
 install=silicon-control.install

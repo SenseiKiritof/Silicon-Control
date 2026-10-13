@@ -27,7 +27,9 @@ Requires(post): dkms
 Requires(preun): dkms
 Recommends:     stress-ng
 Recommends:     libnotify
-# Never both installed: two helpers would write the same CPU (the takeover replaces this).
+# Takeover of Ryzen Control (frozen at 0.8.x): dnf replaces it and `siliconctl boot` imports its state. Never both
+# installed: two helpers would write the same CPU.
+Obsoletes:      ryzen-control < 0.9
 Conflicts:      ryzen-control
 %{?systemd_requires}
 
@@ -130,3 +132,6 @@ dkms remove -m ryzen_smu -v %{drv_version} -q --all --rpm_safe_upgrade || :
 * Tue Oct 13 2026 senseikiritof <tonifede98@gmail.com> - 0.1.0-1
 - Silicon Control: Ryzen Control 0.8.0 under the new name (helper siliconctl, GUI silicon-control,
   app id io.github.senseikiritof.SiliconControl); AMD Ryzen only so far
+- Takes over from Ryzen Control: replaces the ryzen-control package and imports its settings, profiles,
+  calibrations, crash-guard markers and trust rule (the run state too when it ran in the same boot); the
+  login entry and GUI preferences at the first start of the GUI; ryzenctl.off still honoured

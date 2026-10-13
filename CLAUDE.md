@@ -26,8 +26,9 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   are in `../Ryzen Control` (`git -C "../Ryzen Control" log -S'<text>'` or `log -L` when the reason for a line
   is unclear; `../Ryzen Control/CLAUDE.md` has the phase-by-phase history).
 - The open decisions are confirmed (plan revision 2: version 0.1.0, Ryzen Control superseded, AMD + Intel +
-  generic, no Intel hardware, Italian protocol keys kept). Next: phase 0, step 2 (take over from Ryzen
-  Control). Until then the packages conflict with `ryzen-control` and are never installed on the user's machine.
+  generic, no Intel hardware, Italian protocol keys kept).
+- Phase 0 done: the rename (step 1) and the takeover of Ryzen Control (step 2), installed by the user over Ryzen
+  Control 0.8.0 on the 9800X3D. Next: phase 1, step 3 (vendor backends and capabilities, AMD unchanged).
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
@@ -56,8 +57,8 @@ over here, so they live in this file):
   hardware invariants below. In doubt, refuse the write (fail closed) and explain why.
 - The user's machine is the only test hardware: AMD Ryzen 7 9800X3D (Granite Ridge), ASUS ROG STRIX X870E-H,
   Fedora 44, KDE Plasma Wayland, Secure Boot on (the akmods MOK key is enrolled), NCT6799D fan chip, AIO with
-  the pump on pwm2. Ryzen Control 0.8.0 is installed and in use there, with calibrated profiles (custom
-  `new-auto`): Silicon Control must take them over (plan, phase 0) and the two must never run together.
+  the pump on pwm2. Silicon Control replaced Ryzen Control 0.8.0 there (phase 0) and took over its calibrated
+  profiles (custom `new-auto`); the two must never run together.
 - Large independent work (research, a backend) can go to subagents in worktrees; review their commits with
   the safety rules first, then merge; README, CLAUDE.md and the plan are updated by the main session.
 
@@ -108,10 +109,11 @@ them are Ryzen Control's, not this plan's.
   `.timer`), udev rule (laptops' AC changes), preset, modprobe blacklist, polkit policy, .desktop, icon,
   metainfo, notify autostart.
 - `packaging/silicon-control.spec` (RPM: **a single package** `silicon-control`, noarch, with the
-  driver's DKMS source inside; `Conflicts: ryzen-control`, like the deb and Arch packages). The `%post`
+  driver's DKMS source inside; it replaces `ryzen-control`: see "Takeover" below). The `%post`
   rebuilds the module only if it is missing for the running kernel or the key changes: **when
   the source in `ryzen_smu/` changes, `DRV_VERSION`** (Makefile) **= `%drv_version`** (spec)
-  **must be bumped**, otherwise dkms keeps the old module; `VERSION` (app) does not touch the
+  **must be bumped, and `MODULE_VERSION` in `drv.c` with it**, otherwise dkms keeps the old module (or refuses an
+  equal version: see "Takeover"); `VERSION` (app) does not touch the
   module, so a release does not rebuild it. `packaging/debian/` and `packaging/PKGBUILD` (phase 7)
   are wrappers of the same make install; bump `debian/changelog` and `pkgver` with VERSION (make check
   enforces it).
@@ -190,6 +192,17 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
   back. `boot` never raises exceptions (the unit must stay active so that ExecStop runs). Escape
   hatch: kernel parameter `siliconctl.off` + blacklisted module (only the service loads it with an
   explicit modprobe).
+- **Takeover of Ryzen Control** (phase 0): `boot` first runs `import_ryzen_control`, once, while siliconctl has no
+  state of its own: `/etc/ryzenctl`, `/var/lib/ryzenctl` and, if Ryzen Control ran in this boot, `/run/ryzenctl`
+  (not its lock) copied as they are, so the boot goes on as a restart of the same service (no baseline captured over
+  the profile it applied, no false crash; after a boot it did not close, `dirty` + `active` report a crash: the
+  safe side); its polkit trust rule rewritten for the new action. `_lock` also takes `/run/ryzenctl/lock` while
+  that directory exists (a `ryzenctl serve` of its GUI may still run: the driver's `smu_args` is shared). The GUI
+  moves the login entry and copies `ui.json` at start. Units honour `ryzenctl.off`. Packages: RPM `Obsoletes` +
+  `Conflicts`, deb `Conflicts` + `Replaces`, Arch `conflicts` + `replaces`. `DRV_VERSION` stays 0.4.1: the new
+  `%post`'s `dkms add --rpm_safe_upgrade` (same module-version) cancels the `dkms remove` of ryzen-control's `%preun`,
+  as in its own upgrades. Measured: with 0.4.2 dkms refused the install (same `MODULE_VERSION` 0.1.7) and that
+  `%preun` removed the only installed copy.
 - **Modes** are static (no daemon, the dynamic behaviour is done by PBO): Default / Quiet (preset) /
   Eco (calibrated) / Auto (calibrated) / Performance (preset) / Boost (calibrated) / Custom.
   The three calibrated modes share one CO measurement and one margin (+3): Auto adds the

@@ -97,6 +97,19 @@ unplug the charger and look at `cat /run/siliconctl/reapply.json` and
 
 ## Installation
 
+### Coming from Ryzen Control
+
+Silicon Control replaces Ryzen Control (frozen at 0.8.x): its packages remove `ryzen-control`, and the first start of
+`siliconctl.service` imports, once, its settings, profiles, calibrations, crash-guard markers and the "Stop asking for
+the password" rule from `/etc/ryzenctl` and `/var/lib/ryzenctl`. Installed in the boot in which Ryzen Control ran (the
+RPM and the deb start the service at once; on Arch `systemctl enable --now`), the run state of this boot comes too: the
+profile already applied stays and is read back, no new baseline is taken over it. The GUI takes over the login entry
+and its preferences when it first starts. `ryzenctl.off` still works as the escape hatch. Ryzen Control's directories
+stay where they are: delete them by hand once everything works.
+
+Before installing, quit Ryzen Control (window and tray icon) and do not run a calibration. The `ryzen_smu` module is
+rebuilt once (about a minute).
+
 ### Fedora (RPM)
 
 ```sh
@@ -440,9 +453,9 @@ the BIOS.
   starts `pkexec siliconctl serve` without authenticating. It applies only to this action, it is
   not a generic sudo; in exchange every program run as your user can change limits, CO and fans
   (within siliconctl's ceilings). `trust off` removes the rule.
-- Total escape hatch: at boot, in GRUB, press `e` and add `siliconctl.off` to the kernel line:
-  the service does not start and the module is not loaded (it is blacklisted, only the service
-  loads it).
+- Total escape hatch: at boot, in GRUB, press `e` and add `siliconctl.off` (or Ryzen Control's
+  `ryzenctl.off`) to the kernel line: the service does not start and the module is not loaded (it is
+  blacklisted, only the service loads it).
 - Laptops: CPU values are written only on the power source the baseline was captured on (the firmware's
   limits for battery and AC differ); the profile's limits are written again after the firmware's rewrites,
   and no longer once it keeps overriding them ([Laptops](#laptops)).
