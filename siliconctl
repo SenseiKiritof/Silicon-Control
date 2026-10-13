@@ -268,7 +268,7 @@ def smn_read(addr):
         raise Err(_("SMN read of 0x%08X not allowed") % addr)
     if FAKE:
         return FAKE.smn(addr)
-    fd = _lock()
+    fds = _lock()
     try:
         with open(P(SMU_DIR + "/smn"), "wb", buffering=0) as f:
             if f.write(struct.pack("<I", addr)) != 4:
@@ -276,7 +276,7 @@ def smn_read(addr):
         with open(P(SMU_DIR + "/smn"), "rb") as f:
             return struct.unpack("<I", f.read(4))[0]
     finally:
-        os.close(fd)
+        _unlock(fds)
 
 
 def co_arg(core, margin):
@@ -4264,6 +4264,7 @@ def selftest():
     selftest_variants()
     selftest_laptop()
     selftest_takeover()
+    selftest_transport()
     print("selftest ok (%s)" % ROOT)
 
 
@@ -4890,6 +4891,32 @@ def selftest_takeover():
     FAKE = Fake("granite")
     init_cpu()
     assert "imported" not in run(["boot"])
+
+
+def selftest_transport():
+    """The real transports (smu_raw, pm_raw, smn_read: never run by the fake backend) take their locks and release them,
+    also Ryzen Control's while /run/ryzenctl exists: here on regular files in place of the driver's (a mailbox reads back
+    the command written as its status, smn the address, smu_args the arguments)."""
+    global FAKE
+    fake, FAKE = FAKE, None
+    try:
+        for name, data in (("codename", b"23"), ("smu_args", b""), (MP1, b""), ("smn", b""),
+                           ("pm_table_version", struct.pack("<I", 0x620105)), ("pm_table", struct.pack("<2f", 1.5, 2.5))):
+            write_atomic(P(SMU_DIR + "/" + name), "")
+            with open(P(SMU_DIR + "/" + name), "wb") as f:
+                f.write(data)
+        ccd = FAMILIES[23]["fuses"]["ccd"][0]
+        for old_run in (False, True):
+            if old_run:
+                os.makedirs(P(OLD_RUN), exist_ok=True)
+            assert smu_raw(MP1, 0x35, [7]) == (0x35, [7, 0, 0, 0, 0, 0]) and pm_raw() == (0x620105, [1.5, 2.5])
+            assert smn_read(ccd) == ccd
+            for d in (RUN,) + ((OLD_RUN,) if old_run else ()):   # every lock released
+                fd = os.open(P(d + "/lock"), os.O_RDWR)
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                os.close(fd)
+    finally:
+        FAKE = fake
 
 
 def main():
