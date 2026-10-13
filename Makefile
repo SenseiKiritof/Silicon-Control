@@ -1,7 +1,7 @@
 # Silicon Control — the single source of truth for the installed layout. Packages (RPM, deb, Arch)
 # call `make install DESTDIR=…`; `install-cli` / `install-gui` / `install-dkms-src` /
 # `install-locales` are the pieces.
-VERSION := 0.1.0
+VERSION := 0.2.0
 # DKMS module version: bump ONLY when ryzen_smu/ changes (a new /usr/src directory means a
 # rebuild + dracut, about a minute at upgrade time). Same value as %drv_version in the spec. Also bump the
 # driver's MODULE_VERSION: dkms does not install a module whose version equals the installed one, and the old

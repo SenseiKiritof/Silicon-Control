@@ -19,7 +19,8 @@ motherboard fans, with profiles applied at boot.
 Status: the code of Ryzen Control 0.8.0 under the new name — `siliconctl` helper/CLI, systemd services,
 driver via DKMS, RPM package, fans, GTK4 GUI, calibrations, per-family support for other Ryzen
 CPUs, system tray icon on the development system; deb and Arch packages built and install-tested in
-containers; APUs and laptops tested on simulated hardware only (see `docs/plans/`).
+containers; APUs and laptops tested on simulated hardware only (see `docs/plans/`). Since 0.2.0 the generic
+backend serves every other CPU (verified on the 9800X3D with `siliconctl.generic`).
 
 ![Modes page: presets on the left, calibrated modes on the right](docs/screenshots/modes.png)
 
