@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.parse
 from collections import deque
 
@@ -216,14 +217,15 @@ class Helper:
 
 
 def bg(work, done, fail):
-    """work() in a thread; done(result) or fail(message) in the main loop. Never block the UI."""
+    """work() in a thread; done(result) or fail(message) once in the main loop, whatever they return (idle_add calls
+    again a callback that returns a true value: a tuple of two calls opened report dialogs without end). Never block
+    the UI."""
     def run():
         try:
-            out = work()
+            f, x = done, work()
         except Exception as e:  # HelperError or bug: shown to the user, never lost
-            GLib.idle_add(fail, str(e))
-            return
-        GLib.idle_add(done, out)
+            f, x = fail, str(e)
+        GLib.idle_add(lambda: f(x) and False)
     threading.Thread(target=run, daemon=True).start()
 
 
@@ -2936,6 +2938,22 @@ class App(Adw.Application):
             url, cut = issue_url(rep)
             assert url.startswith(ISSUES + "?template=cpu-report.md&title=CPU+report") and not cut, url
             win.report_dialog(rep).force_close()
+            # the check end to end (confirm answered, hwtest and report through bg, then the reload): the report shown
+            # once, then the record on the Monitor
+            shown, ctx, end = [], GLib.MainContext.default(), time.monotonic() + 60
+            win.confirm = lambda _h, _b, _l, cb, **_k: cb(True)
+            real = win.report_dialog
+            win.report_dialog = lambda r: shown.append(real(r)) or shown[-1]   # the dialog, as the real one returns
+            win.cpu_check()
+            while not (shown and win.status.get("checked")) and time.monotonic() < end:
+                ctx.iteration(True)
+            for _i in range(50):   # a callback that ran again would run at every iteration
+                ctx.iteration(False)
+            for d in shown:
+                d.force_close()
+            assert len(shown) == 1 and win.status["checked"]["esito"] == "ok", (len(shown), win.status.get("checked"))
+            assert mon.unverified.get_visible() and not mon.check_btn.get_visible(), "the record not on the Monitor"
+            del win.confirm, win.report_dialog
             for k in (2, n):
                 old = curve.cores
                 mon.telemetry(dict(t, cores=t["cores"][:k]))
