@@ -28,6 +28,10 @@ written: Claude does not write the OC-mailbox module, since it would sidestep th
 Plundervolt mitigation. On Intel the undervolt is left to the BIOS; the design under "Step 7" stays only as a
 reference.
 
+Revision 7 (2026-10-13): phase 4 designed with the user: the in-app CPU check and report, so that the owners of
+unverified or unknown CPUs can add them from real reports (prefilled GitHub issue, a PM table dump only with explicit
+consent, a local record of a successful hwtest, a notice in the Monitor).
+
 ## Context
 
 Ryzen Control (`../Ryzen Control`, v0.8.0, public on GitHub) is a Ryzen Master-style tool for Linux: a root
@@ -306,10 +310,19 @@ backends nobody here can run stay "expected".
 | 6 | `feat: Intel power limits, TCC offset, boost` (no voltage) + fake variants | selftest; owners' `hwtest` |
 | 7 | ~~`feat: Intel undervolt and its calibration`~~ — stopped (revision 6): not implemented, the Intel undervolt is left to the BIOS | — |
 
-### Phase 4 — README tables per vendor and release
+### Phase 4 — the in-app CPU check and report, README by vendor, release (revision 7)
 
-README "Processors" by vendor (verified / expected / not supported), the hwtest procedure for owners, the
-release workflow, the GitHub repository when the user creates it.
+The user's choices: the report goes out as a prefilled GitHub issue (with Copy and Save as well); where an AMD PM
+table exists but is not mapped (a codename not in FAMILIES, a version `pm_table()` does not accept) a dump is added
+only with explicit consent (the read goes through the driver: an SMU transfer command); a successful `hwtest` marks
+the machine verified locally; the Monitor proposes the check (a notice that can be hidden), Preferences keep it.
+
+| # | Commit | Verification |
+|---|---|---|
+| 8 | `feat: CPU report and the local hwtest record` — `VERSION` in `siliconctl` (checked by `make check`), `report [pm]` (read-only: versions, kernel, distribution, CPU from `cpuinfo()`, topology, backend and why, board and BIOS from DMI without serials, cpufreq, sensors, powercap zones; AMD codename, SMU/PM versions and `pm_table_size`; Intel TCC, intel_pstate, thermald; the PM dump only with `pm` where unmapped), `hwtest` writes `settings.hwtest` {date, esito, id}, `status.checked` when the id matches this CPU | `selftest_report` on granite, codename 25, intel-laptop, generic; mutations of the consent, the id match, the "mapped" refusal |
+| 9 | `feat(gui): the CPU check and report` — the Monitor notice (backend generic or not verified, not checked, hidden per CPU id in `ui.json`), one flow for the notice and Preferences: confirm (+ PM consent when offered) → hwtest → report → dialog with Copy, Save (`Gtk.FileDialog`), Open issue (`Gtk.UriLauncher`, body cut at ~6000 characters, the full report on the clipboard) | GUI smoke on granite, codename 25, intel-laptop, generic |
+| 10 | `docs: processors by vendor, the owners' procedure, the issue template` — README by vendor, "Adding your processor" through the in-app check, `.github/ISSUE_TEMPLATE/cpu-report.md` | `make check` |
+| 11 | release 0.4.0; the user creates `SenseiKiritof/Silicon-Control` and pushes | the user's check on the 9800X3D (report, record, flow), the issue link once the repository exists |
 
 ## Notes for the first session
 
