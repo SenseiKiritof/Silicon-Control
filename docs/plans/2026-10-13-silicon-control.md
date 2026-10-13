@@ -23,6 +23,11 @@ today. The helper stays one file.
 Revision 5 (2026-10-13): phase 3, step 5 done: the Intel research by three agents (power limits; TCC offset,
 turbo and telemetry; undervolt), in "Intel: research" below with its sources, and the design of steps 6 and 7.
 
+Revision 6 (2026-10-13): phase 3, step 7 (the Intel undervolt) stopped at the user's request before any code was
+written: Claude does not write the OC-mailbox module, since it would sidestep the Secure Boot lockdown and the
+Plundervolt mitigation. On Intel the undervolt is left to the BIOS; the design under "Step 7" stays only as a
+reference.
+
 ## Context
 
 Ryzen Control (`../Ryzen Control`, v0.8.0, public on GitHub) is a Ryzen Master-style tool for Linux: a root
@@ -62,8 +67,8 @@ an owner runs `hwtest`, exactly as for the AMD families today.
   owner runs `hwtest`.
 - GitHub repository `SenseiKiritof/Silicon-Control`, created by the user at phase 4: until then everything stays
   local and the first public release is already multi-vendor. The packages' URLs point there from phase 0.
-- Intel (revision 5, the user's choices): the undervolt is written now although nobody here can test it — shipped
-  disabled (an explicit opt-in) and "expected" until an owner's `hwtest`; an active thermald does not block the PL
+- Intel (revision 5, the user's choices; revision 6): the undervolt is not implemented (step 7 stopped, left to the
+  BIOS); an active thermald does not block the PL
   and TCC writes but brings a prominent warning; `unlock on` raises PL1/PL2 up to the kernel's `max_power_uw`, never
   on Raptor Lake desktop.
 - The internal protocol keys with Italian names (`canale`, `modo`, `curva`, `ventola`, `pompa`, `instabile`)
@@ -241,11 +246,10 @@ every raw write taints the kernel since 5.9.
   EPERM on TCC), `intel-laptop` (battery, the firmware rewriting PL1); the fake's sysfs writes raise the kernel's
   errors.
 
-### Step 7 (undervolt): written untested, shipped disabled
+### Step 7 (undervolt): stopped (revision 6)
 
-Done in this phase although nobody here owns an Intel CPU (the user's choice): disabled until an explicit opt-in,
-"expected" on every model until an owner's `hwtest`, compiled and loaded here only to prove it refuses an AMD CPU.
-A MOK-signed DKMS module with one attribute (the core+cache offset in mV): planes 0 and 2 only, always equal;
+Not implemented: Claude does not write this module (it would sidestep the Secure Boot lockdown and the Plundervolt
+mitigation). The design below, from revision 5, stays only as a reference. A MOK-signed DKMS module with one attribute (the core+cache offset in mV): planes 0 and 2 only, always equal;
 read-modify-write keeping bits 20:0; busy poll ≤ 1 ms; success only with completion code 0 **and** a matching
 readback; a probe at every boot with a value different from the baseline (−2 mV), since a locked mailbox reads
 back 0; a model allowlist (Haswell–Comet Lake, Ice/Tiger/Rocket Lake, 06_97/B7/BF with UVP off; refused:
@@ -300,7 +304,7 @@ backends nobody here can run stay "expected".
 |---|---|---|
 | 5 | research by agents, then a plan revision: per generation (Haswell … Arrow Lake, desktop and laptop) the power-limit, TCC and undervolt interfaces, locks, floors, how to read back; Linux tools to learn from (intel-undervolt, undervolt.py, throttled, thermald) — done, revision 5 | sources in the revision |
 | 6 | `feat: Intel power limits, TCC offset, boost` (no voltage) + fake variants | selftest; owners' `hwtest` |
-| 7 | `feat: Intel undervolt and its calibration` (only where the mailbox reads back), disabled until an opt-in | selftest with locked and unlocked fakes; the module built here and refusing the AMD CPU; owners' `hwtest` |
+| 7 | ~~`feat: Intel undervolt and its calibration`~~ — stopped (revision 6): not implemented, the Intel undervolt is left to the BIOS | — |
 
 ### Phase 4 — README tables per vendor and release
 

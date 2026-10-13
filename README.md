@@ -45,7 +45,7 @@ has written and read back each of its functions; until then it is **expected**: 
 | Raven Ridge, Picasso, Dali, Van Gogh (Steam Deck), Krackan… | | generic backend | no readable PM table through ryzen_smu, or an unmapped one: the SMU is not used |
 | HX laptops: 7945HX, 9955HX … | Dragon Range, Fire Range (reported by the driver as Raphael / Granite Ridge) | generic backend | when the machine has a system battery (a laptop): its firmware and battery limits are not handled, the SMU is not used |
 | Threadripper, EPYC | — | generic backend | other interface (HSMP), out of scope: the SMU is not used |
-| Intel Core, desktops and laptops (Haswell … Arrow Lake, Core Ultra) | — | Intel backend, expected | PL1/PL2, temperature limit (TCC offset), turbo, FMax: see [Intel backend](#intel-backend); undervolt planned |
+| Intel Core, desktops and laptops (Haswell … Arrow Lake, Core Ultra) | — | Intel backend, expected | PL1/PL2, temperature limit (TCC offset), turbo, FMax: see [Intel backend](#intel-backend); no undervolt (set it in the BIOS) |
 | Every other CPU: ARM, … | — | generic backend, expected | see [Generic backend](#generic-backend) |
 
 Fans depend on the motherboard (Nuvoton nct67xx chip), not on the processor.
@@ -101,8 +101,8 @@ On Intel CPUs (no Intel hardware was available to develop it: every model is *ex
   power profile, the fans, the temperature and the package power as on the [generic backend](#generic-backend).
 - **thermald** (common on laptops) may rewrite the power and temperature limits: `status`, every write and the GUI
   warn while it runs. On a laptop the limits the firmware rewrites are written again, as for the AMD APUs.
-- Never a raw MSR write, never PL4, the time windows or the voltage; the undervolt (OC mailbox) is planned behind an
-  explicit opt-in.
+- Never a raw MSR write, never PL4, the time windows or the voltage: the undervolt is not done here, set it in the
+  BIOS where the board allows it.
 
 ### Laptops
 
