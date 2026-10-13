@@ -12,22 +12,23 @@ motherboard fans, with profiles applied at boot.
 
 > **Warning.** Experimental software that talks directly to the processor's SMU.
 > Developed and tested on a single system: Ryzen 7 9800X3D, ASUS ROG STRIX X870E-H, Fedora 44.
-> Processors outside the [table](#processors) are refused. A Curve Optimizer that is too
+> Processors outside the [table](#processors) get the generic backend: kernel interfaces only, never the SMU. A Curve Optimizer that is too
 > negative can reboot the system (no damage, but unsaved work is lost): read "Safety" before
 > using it.
 
 Status: the code of Ryzen Control 0.8.0 under the new name — `siliconctl` helper/CLI, systemd services,
 driver via DKMS, RPM package, fans, GTK4 GUI, calibrations, per-family support for other Ryzen
 CPUs, system tray icon on the development system; deb and Arch packages built and install-tested in
-containers; APUs and laptops tested on simulated hardware only (see `docs/plans/`).
+containers; APUs and laptops tested on simulated hardware only (see `docs/plans/`). Since 0.2.0 the generic
+backend serves every other CPU (verified on the 9800X3D with `siliconctl.generic`).
 
 ![Modes page: presets on the left, calibrated modes on the right](docs/screenshots/modes.png)
 
 ## Processors
 
 Every family has its own SMU allowlist (`FAMILIES` at the top of `siliconctl`, from ZenStates-Core
-and ryzen_smu): a family that is not there is refused in full, and a function the family does not
-have is refused, its command never sent. A family is **verified** once a `hwtest` on real hardware
+and ryzen_smu): a family that is not there gets the [generic backend](#generic-backend), with no SMU command,
+and a function the family does not have is refused, its command never sent. A family is **verified** once a `hwtest` on real hardware
 has written and read back each of its functions; until then it is **expected**: same guarantees
 (values ≤ the BIOS ones, readback of every write, crash-guard), but nobody has tried it yet, and
 `siliconctl status` and the Monitor page say so.
@@ -41,9 +42,10 @@ has written and read back each of its functions; until then it is **expected**: 
 | Ryzen 3000 desktop: 3600 … 3950X | Matisse (4) | expected | PPT/TDC/EDC/Tjmax (PM tables 0x240803/0x240903), Quiet and Performance, Quiet also turns the boost off; no Curve Optimizer, so no calibrated modes |
 | Ryzen 1000/2000 desktop | Summit Ridge (9), Pinnacle Ridge (10) | expected | boost switch, power profile and fans only: no SMU command (no Curve Optimizer, no readable limits); Tdie instead of Tctl on the X models with an offset |
 | APUs: desktop Ryzen 4000G/5000G/8000G; mini PCs and laptops with Ryzen 4000/5000/6000/7040/8040 U/H/HS, AI 300, AI Max | Renoir (2), Lucienne (17), Cezanne (14), Rembrandt (11), Phoenix (21), Hawk Point (24), Strix Point (22), Strix Halo (26) | expected | fast/slow PPT, Tjmax and TDC/EDC where the PM table is mapped, read back from it; STAPM shown read only; Quiet (60 % of fast/slow, boost off) and Performance. No Curve Optimizer (no verified readback on APUs), no FMax, so no calibrated modes. In a laptop, the [laptop rules](#laptops) |
-| Raven Ridge, Picasso, Dali, Van Gogh (Steam Deck), Krackan… | | not supported | no readable PM table through ryzen_smu, or an unmapped one |
-| HX laptops: 7945HX, 9955HX … | Dragon Range, Fire Range (reported by the driver as Raphael / Granite Ridge) | not supported | refused when the machine has a system battery (a laptop): its firmware and battery limits are not handled |
-| Threadripper, EPYC | — | not supported | other interface (HSMP), out of scope |
+| Raven Ridge, Picasso, Dali, Van Gogh (Steam Deck), Krackan… | | generic backend | no readable PM table through ryzen_smu, or an unmapped one: the SMU is not used |
+| HX laptops: 7945HX, 9955HX … | Dragon Range, Fire Range (reported by the driver as Raphael / Granite Ridge) | generic backend | when the machine has a system battery (a laptop): its firmware and battery limits are not handled, the SMU is not used |
+| Threadripper, EPYC | — | generic backend | other interface (HSMP), out of scope: the SMU is not used |
+| Every other CPU: Intel, ARM, … | — | generic backend, expected | see [Generic backend](#generic-backend); Intel's power limits, temperature limit and undervolt are planned |
 
 Fans depend on the motherboard (Nuvoton nct67xx chip), not on the processor.
 
@@ -62,10 +64,25 @@ core by 3 steps for a moment.
 4. Open an issue with the output of `lscpu | grep 'Model name'`, `sudo siliconctl status` and
    `sudo siliconctl hwtest`.
 
-A family that is not in the table is refused before any SMU command (`unsupported CPU (codename
-N…)`). Adding it needs its command IDs and PM table map from a verified source, a fake variant in
+A family that is not in the table gets the generic backend (`unsupported CPU (codename N…)` is the reason
+`siliconctl status` gives) and no SMU command. Adding it needs its command IDs and PM table map from a verified source, a fake variant in
 the selftest (`SILICONCTL_FAKE_FAMILY`) and then the same `hwtest`: open an issue with the codename
 (`cat /sys/kernel/ryzen_smu_drv/codename`) and the PM table version.
+
+### Generic backend
+
+Where the AMD backend does not apply (no `ryzen_smu` driver, a family that is not in the table, an HX laptop, a CPU
+of another vendor), Silicon Control uses only the kernel's interfaces, and never sends an SMU command nor reads the
+PM table: the maximum frequency (FMax) through cpufreq, every policy within its own hardware maximum; the boost
+switch and the power profile; the motherboard fans; the CPU temperature (k10temp, coretemp or a thermal zone of the
+CPU) and the package power (RAPL energy) where the kernel has them. Quiet and Performance work; the calibrated modes
+need the Curve Optimizer and stay locked. The same guarantees: the baseline captured at boot is the ceiling, every
+write is read back, the crash-guard. `siliconctl status` says which backend is in use and why.
+
+To try it on an AMD CPU that the AMD backend supports, add `siliconctl.generic` to the kernel line for one boot (in
+GRUB, press `e`): that boot runs the generic backend from the start. If the backend changes within a boot (the
+`ryzen_smu` module loaded by hand after a boot without it), CPU writes are refused until the next boot: the baseline
+of the other backend is no ceiling for this one.
 
 ### Laptops
 
@@ -453,6 +470,8 @@ the BIOS.
   starts `pkexec siliconctl serve` without authenticating. It applies only to this action, it is
   not a generic sudo; in exchange every program run as your user can change limits, CO and fans
   (within siliconctl's ceilings). `trust off` removes the rule.
+- Kernel parameter `siliconctl.generic`: the generic backend for that boot, the SMU never touched (see [Generic
+  backend](#generic-backend)).
 - Total escape hatch: at boot, in GRUB, press `e` and add `siliconctl.off` (or Ryzen Control's
   `ryzenctl.off`) to the kernel line: the service does not start and the module is not loaded (it is
   blacklisted, only the service loads it).

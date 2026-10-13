@@ -29,6 +29,13 @@ msgstr "SMU %s 0x%02X: %s%s"
 msgid "ryzen_smu driver not loaded (%s)"
 msgstr "driver ryzen_smu non caricato (%s)"
 
+msgid "forced by the kernel parameter siliconctl.generic"
+msgstr "forzato dal parametro del kernel siliconctl.generic"
+
+#, python-format
+msgid "the baseline of this boot was captured by the %s backend, the CPU now uses the %s one: CPU writes refused until the next boot"
+msgstr "la baseline di questo avvio è stata catturata dal backend %s, ora la CPU usa quello %s: scritture sulla CPU rifiutate fino al prossimo avvio"
+
 #: siliconctl
 #, python-format
 msgid "unsupported CPU (codename %d; supported: %s)"
@@ -139,6 +146,10 @@ msgstr "n/d"
 #, python-format
 msgid "CPU %s, %d cores, SMU %s, PM table %s"
 msgstr "CPU %s, %d core, SMU %s, PM table %s"
+
+#, python-format
+msgid "CPU %s, %d cores, generic backend: %s"
+msgstr "CPU %s, %d core, backend generico: %s"
 
 #: siliconctl
 msgid "  (experimental, not verified)"

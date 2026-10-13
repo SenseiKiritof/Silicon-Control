@@ -2,7 +2,7 @@
 # Arch Linux package: the layout of the project's Makefile (make install DESTDIR=…); the ryzen_smu
 # module is built by DKMS through its pacman hook (install linux-headers for your kernel).
 pkgname=silicon-control
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="Power limits, boost, undervolt and fans of the CPU, calibrated per chip (AMD Ryzen so far)"
 arch=('any')

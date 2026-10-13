@@ -1,7 +1,7 @@
 # Silicon Control — the single source of truth for the installed layout. Packages (RPM, deb, Arch)
 # call `make install DESTDIR=…`; `install-cli` / `install-gui` / `install-dkms-src` /
 # `install-locales` are the pieces.
-VERSION := 0.1.0
+VERSION := 0.2.0
 # DKMS module version: bump ONLY when ryzen_smu/ changes (a new /usr/src directory means a
 # rebuild + dracut, about a minute at upgrade time). Same value as %drv_version in the spec. Also bump the
 # driver's MODULE_VERSION: dkms does not install a module whose version equals the installed one, and the old
@@ -91,14 +91,15 @@ uninstall:
 	rm -f $(APPDIR)/$(APPID).desktop $(ICONDIR)/$(APPID).svg $(METADIR)/$(APPID).metainfo.xml
 	rm -f $(LOCALEDIR)/*/LC_MESSAGES/siliconctl.mo $(LOCALEDIR)/*/LC_MESSAGES/silicon-control.mo
 
-# Checks that need neither root nor hardware: the Italian catalogs against the sources, selftest,
+# Checks that need neither root nor hardware: the Italian catalogs against the sources, pyflakes, selftest,
 # layout in a scratch root, units, desktop entries, metainfo, the calibration window over every state
-# of the fake backend (needs a display; a fresh fake root each time), once in English and once with
-# the Italian catalog.
+# of the fake backend (needs a display; a fresh fake root each time), once in English, once with
+# the Italian catalog and once on the generic backend.
 check: locales
 	@v=$(VERSION); grep -q "^Version: *$$v$$" packaging/silicon-control.spec && head -1 packaging/debian/changelog | grep -qF "($$v)" \
 	  && grep -q "^pkgver=$$v$$" packaging/PKGBUILD || { echo "VERSION $$v differs in the spec, debian/changelog or PKGBUILD"; exit 1; }
 	python3 po/check.py $(wildcard po/*/it.po)
+	python3 -m pyflakes siliconctl silicon-control po/check.py po/msgfmt.py   # undefined names and the like (dnf install python3-pyflakes)
 	python3 siliconctl selftest
 	rm -rf "$(TMPROOT)" && $(MAKE) install DESTDIR="$(TMPROOT)" >/dev/null
 	cd "$(TMPROOT)" && find . -type f | sort
@@ -110,6 +111,8 @@ check: locales
 	root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 SILICONCTL_ROOT=$$root timeout 120 python3 silicon-control --mock --smoke; \
 	  rc=$$?; rm -rf $$root; exit $$rc
 	root=$$(mktemp -d) && LANGUAGE=it LC_ALL=it_IT.UTF-8 SILICON_CONTROL_LOCALEDIR=build/locale SILICONCTL_ROOT=$$root timeout 120 \
+	  python3 silicon-control --mock --smoke; rc=$$?; rm -rf $$root; exit $$rc
+	root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 SILICONCTL_ROOT=$$root SILICONCTL_FAKE_FAMILY=generic timeout 120 \
 	  python3 silicon-control --mock --smoke; rc=$$?; rm -rf $$root; exit $$rc
 
 # README screenshots: the GUI on a fresh fake backend (fan roles, presets, the three calibrations),

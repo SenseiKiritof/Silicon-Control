@@ -1,3 +1,14 @@
+silicon-control (0.2.0) unstable; urgency=medium
+
+  * Generic backend where the AMD one does not apply (Intel, ARM, the AMD
+    families not in the table, HX laptops) or with the kernel parameter
+    siliconctl.generic: FMax through cpufreq, boost, power profile, fans, the
+    CPU temperature and the package power; never an SMU command.
+  * The GUI shows what the CPU reports; the Monitor shows its values as soon as
+    it opens.
+
+ -- senseikiritof <tonifede98@gmail.com>  Tue, 13 Oct 2026 19:18:21 +0200
+
 silicon-control (0.1.0) unstable; urgency=medium
 
   * Silicon Control: Ryzen Control 0.8.0 under the new name (helper
