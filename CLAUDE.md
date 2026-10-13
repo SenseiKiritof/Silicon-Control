@@ -2,112 +2,67 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status
+## Project
 
-"Ryzen Control": Ryzen Master-style control (Curve Optimizer, Curve Shaper, PBO, FMax/Tjmax,
-fans) for a Ryzen 7 9800X3D on Linux, GTK4/libadwaita GUI + root helper, RPM/deb/Arch packages.
+"Silicon Control": Linux control of CPU power limits, boost frequency, temperature limit, undervolt and
+fans for every CPU vendor, with automatic per-chip calibration and protection after a crash; GTK4/libadwaita
+GUI + root helper, RPM/deb/Arch packages. It is the successor of "Ryzen Control" (AMD only, in
+`../Ryzen Control`, last release v0.8.0, public on https://github.com/SenseiKiritof/Ryzen-Control).
 
-The source of truth is the plan `docs/plans/2026-10-09-ryzen-control.md` (rev. 4): architecture,
-SMU command table, validation ranges, profile format, crash-guard, planned phases and commits.
-Read it before touching anything; this file only summarises the essentials. Future plans go in
-the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`). Language: source code, comments, README,
-plans and commit messages are in English; user-facing strings go through gettext (domains
-`ryzenctl` and `ryzen-control`, catalogs in `po/<domain>/<lang>.po`, Italian maintained);
-protocol keys and stored values keep their historical Italian names (`canale`, `modo`, `curva`,
-`ventola`, `pompa`, `instabile`, …) — renaming them is a coordinated change of ryzenctl +
-ryzen-control + selftest.
+The source of truth is the plan `docs/plans/2026-10-13-silicon-control.md`: goals, decisions (taken and still
+to confirm), target architecture, safety rules for the new backends, phases and commits. Read it before
+touching anything. The Ryzen Control plan `docs/plans/2026-10-09-ryzen-control.md` documents the inherited
+code (SMU command tables, crash-guard, calibrations, revisions 1–22) and stays as reference. Future plans go
+in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
 
-Done: **phase 1** (`ryzenctl` complete for the CPU part, systemd units, vendored driver, RPM
-spec, README). Verified on hardware (9800X3D, SMU 98.81.0, PM table 0x620105): driver signed
-automatically with the akmods key, `hwtest` ok for CO, FMax, PPT, TDC, EDC, Tjmax.
-**Curve Shaper not verifiable**: RSMU 0xA6 answers OK but 0x84 returns zeros (or arg0 itself)
-→ `shaper` is experimental, out of profiles/baseline/hwtest, the setter always fails at readback
-(safe by construction). Crash-guard verified on hardware (sysrq crash → profile disabled +
-notification, reactivate, restart, clean boot, resume). Tag `v0.1.0` on `main`.
-**Phase 2 (fans) verified on hardware** (NCT6799D, no ACPI conflict, no kernel parameter):
-`fan enable/status/autodetect/step/curve/identify` ok; autodetect gave pwm2 pompa (pump)
-(2125→1898 rpm at 21 %), pwm5/pwm6 ventola (fan), pwm7 (100 %, no tachometer) not testable and
-protected; step 10 s/5 s on the fan channels removes the jumps on spikes (3 s of full load, rpm
-steady). The chip rounds the steps to ~200 ms. Tag `v0.2.0`.
-**Phase 3 (GUI) and phase 4 (calibrations)** written and used on hardware: `ryzen-control`
-(pages Monitor, Modes with Quiet/Performance presets and calibrated Eco/Auto/Boost, CPU, Curves, Fans,
-Preferences;
-values coloured against the factory ones; resizable calibration window with the progress pinned on
-top, duration estimates, measured voltage per core and mV per step; immediate interruption).
-`autotune` in ryzenctl is a step machine (`start/step/status/abort/estimate`, state in
-`/var/lib/ryzenctl/autotune.json`, resume after crash, parallel by default). Auto verified on
-hardware (fft search: per-core limit −35, final pass −29 stable, PPT 114 W, FMax 4850, ≈ 3.4
-mV/step); Eco reuses Auto's validated CO with the Eco preset (instant when a recorded final pass
-covers it); Boost only with unlock (unlock ceilings); pump with cap or fixed speed; choice at the
-end of the calibration (Cancel / Save / Save and apply); `trust`, start at login, clickable
-notification; Preferences tab; unknown fan channels in a collapsed section. Tag `v0.4.5` (VERSION
-0.4.5), DKMS module `DRV_VERSION` 0.4.1. **Phase 5** (all Ryzen CPUs) in progress: step 18 committed
-(multi-variant selftest and read-only check on the real sysfs; `hwtest` on the 9800X3D pending) —
-`FAMILIES` table by codename, `TOPO`/`CORES` from the sysfs topology, CO mask with the CCD
-(`co_mask`), selftest repeated on fake variants (`Fake(variant)`, `RYZENCTL_FAKE_FAMILY`: 16 cores on
-2 CCDs, no PM table, 2×6 cores, Raphael). Step 19: Raphael (Zen 4, `verified: False`: CO and FMax,
-no PM map → limits refused); CCDs with disabled cores: the physical slots come from the core fuses
-(SMN reads, ZenStates-Core addresses; `core_map`), refused only if unreadable or inconsistent;
-Vermeer/Matisse left out for lack of reliable IDs/maps. Step 20: the GUI shows and uses only the
-active cores (rows from `status.cores`/telemetry), the family and core count on the Monitor, a note
-for families not verified; Auto refused where the PM limits are unknown (its knee needs the PPT). Step 21:
-README "Processors" table (verified / expected / not supported) and the `hwtest` procedure for
-third-party CPUs; `hwtest` ok on the 9800X3D after the refactor (2026-10-12). Rev. 16, from three
-research agents (Ryzen 5000, older CPUs, Windows tools): Vermeer expected (CO MP1 0x35/0x48 in
-−30..+30, limits RSMU 0x53–0x56, PM tables 0x3808xx/0x3809xx, Zen 3 fuses always read), Matisse
-expected (limits only), Summit/Pinnacle Ridge (no SMU command: boost, power, fans); FMax optional
-everywhere, per-family CO range, `boost on|off` (cpufreq, no SMU), Tdie on the X parts with an
-offset, board-limit guard (motherboard limits in the BIOS: Quiet/Eco on AMD's Eco mode values, Auto
-refused); calibration ideas from CoreCycler: single-core phase in the final pass (user choice,
-default on), hardware watchdog during a calibration, `autotune verify` — done by an agent and merged:
-`single` (SINGLE_SEC per core, one thread, a core that fails alone is raised alone, `core_margin`),
-`Watchdog` in `serve` only, `autotune verify <profile> [minutes=]` / `finish`. Rev. 17 (user request):
-custom calibrations, `autotune start <mode> name=<profile>`: saved under their own name, never over
-eco/auto/boost, and their CO search never written over the shared `co_limits.json`; listed in
-`settings.calibrated` (status `calibrated`) with the base mode; GUI "Custom" row in the Calibrated
-column; `retry=1` (custom only) ignores the reused measurement's crash margin and recorded failures.
-**Phase 5 closed, tag `v0.5.0`** (2026-10-13), on the 9800X3D: `hwtest` ok, watchdog armed and
-disarmed by `serve`; forced reset proven (2026-10-13: `serve` killed with SIGKILL during a verify →
-the board reset by itself on the SP5100 TCO timer; with systemd driving it, 0.5.0-5, a killed `serve`
-no longer resets the PC and the next ryzenctl released it, while a kernel crash, sysrq c, during a
-verify was reset by the systemd-driven watchdog), a custom calibration from Auto with the single-core test passed at −29 on every core
-(PPT 114 W, FMax 4750). Tag `v0.5.1` (2026-10-13): the calibration watchdog driven by systemd, verified
-(freeze and kernel crash reset the PC, a dead ryzenctl does not), clearer custom-retry text.
-**Phase 6** (tray, step 22): `Tray` in `ryzen-control`, a StatusNotifierItem + com.canonical.dbusmenu exported
-with Gio (`register_object_with_closures2`, the old name before GLib 2.84); `--tray` starts only the icon
-(`App.hold`), Preferences "Icon in the system tray" (ui.json `tray`) and "Start minimized to the tray icon"
-(`tray_minimized`, default on: the login entry then runs `--tray`, otherwise the window opens too);
-menu and tooltip from `local_state()` (settings.json, crashed, profile names: world-readable) and k10temp,
-no root until a menu entry needs it, then the app's single `ryzenctl serve` (`App.get_helper`, shared with
-the window, kept when the window closes while the tray is on); PPT in the tooltip only when serve runs
-anyway. Verified on the mock over D-Bus in Plasma (registered, layout, click → mode applied, Quit) and by
-the user on the installed package. **Phase 6 closed, tag `v0.6.0`** (2026-10-13).
-**Phase 7** (steps 23–24): `packaging/debian/` (debhelper 13, `dh_dkms` on the dkms.conf that make install
-generated, `dh_installsystemd`: ryzenctl.service started, the resume unit only enabled; lintian overrides for
-the sleep targets and the missing man pages) and `packaging/PKGBUILD` (+ `.install`: services to enable by
-hand, the dkms pacman hook builds the module). Both through the same `make install`; built and checked in
-containers by `packaging/build-deb.sh` / `build-arch.sh` (`make deb`, `make arch` with podman, and two jobs
-of the release workflow): lintian clean, namcap warnings expected (empty state dirs, the python3 shebang,
-runtime-only deps); installed, selftest and removed in Debian 13, Ubuntu 24.04 and Arch containers; not used
-on real Debian/Ubuntu/Arch hardware. `make check` fails if VERSION differs in the spec, debian/changelog or
-PKGBUILD. **Phase 8** (APUs and laptops, rev. 20–21), all expected, tested on fake hardware only: step 25
-desktop APUs and mini PCs — fast/slow/Tctl/TDC/EDC, Quiet/Performance presets; step 26 laptops (done by an
-agent, reviewed): the APU entries are `mobile`, the baseline records the power source (`# source`,
-`power_source`: Mains/USB online = AC), `load_baseline(strict)` refuses CPU writes on the other source
-(`source_mismatch`), Default there writes only fan/power/boost; `apply_lines` runs `power`/`boost` first
-(amd-pmf rewrites the limits on a platform profile change); `ryzenctl reapply` (ryzenctl-reapply.timer every
-10 s, udev rule `60-ryzen-control.rules` on AC changes, both gated by the flag `/run/ryzenctl/reapply-wanted`
-that `reapply_mark` keeps only on a laptop with autostart and a profile changing a limit) writes back the
-drifted limits and gives up after `REAPPLY_MAX` corrections in `REAPPLY_WINDOW` s (state `/run/ryzenctl/reapply.json`,
-read by the Monitor and the tray); a limit set by hand (`limit_setter` outside a profile) or a save of the
-selected profile stops it until the next apply. **Phase 8 closed, tag `v0.8.0`** (2026-10-13) after the regression
-check on the 9800X3D: `hwtest` ok, a mode and Default applied, the timer enabled by the RPM's `%triggerun` on the
-upgrade from 0.7.1, firing every 10 s and silent in the journal (no flag on a desktop).
-The repository's GitHub releases are immutable (no asset can be added after publishing): the
-workflow builds the three packages in parallel as artifacts and one `release` job publishes them together
-(v0.7.0 has the RPM only; v0.7.1 is the first with all three).
+## Status (2026-10-13)
 
-Lessons from the hardware: the PM table reflects a new limit after tens of ms → readback with
+- The first commit imported Ryzen Control v0.8.0 (commit 97152b0 of `../Ryzen Control`) unchanged: the code
+  is AMD only and still uses the old names (`ryzenctl`, `ryzen-control`, `org.ryzencontrol.RyzenControl`,
+  `/etc/ryzenctl`, `/var/lib/ryzenctl`, `/run/ryzenctl`, `ryzenctl.off`, gettext domains `ryzenctl` and
+  `ryzen-control`). The sections "Inherited from Ryzen Control" below describe that code as it is.
+- Its history is not in this repository: the commit messages that explain the code and its hardware lessons
+  are in `../Ryzen Control` (`git -C "../Ryzen Control" log -S'<text>'` or `log -L` when the reason for a line
+  is unclear; `../Ryzen Control/CLAUDE.md` has the phase-by-phase history).
+- Nothing of the Silicon Control plan is done yet. Start by confirming the open decisions of the plan with the
+  user, then phase 0, step 1 (the rename).
+- No git remote yet: the user creates the GitHub repository when ready.
+
+## Working with the user
+
+These are the user's standing rules from the Ryzen Control sessions (that project's memory does not carry
+over here, so they live in this file):
+
+- Reply in Italian. Source code, comments, README, plans and commit messages in English; user-facing strings
+  through gettext with the Italian catalogs kept complete (`po/<domain>/it.po`).
+- The plugins ponytail and caveman are always on (global `~/.claude/CLAUDE.md`).
+- Plans are written in `docs/plans/` (versioned with the project), also when plan mode is used.
+- Step-by-step development: one commit per step of the plan, only after its verification (`make check` at
+  least); failed verification → fix it, no commit. Commits on `dev` are authorized. Conventional prefix
+  (`feat/fix/build/docs/chore/test/refactor`), English prose, the `Co-Authored-By` line required by the
+  environment.
+- Everything that needs root or the real hardware is run by the user (`! command` in the prompt) and reported
+  back; commit after their result. Give them the exact commands, with absolute paths.
+- While the user runs a calibration, a verification or a measurement on the machine ("sta facendo", "sto
+  calibrando"), run nothing that loads the CPU (selftest, `make check`, GUI smoke, package builds,
+  screenshots): only edit and commit what is already verified, list the checks that are pending and run
+  them when the user says it finished. The calibrations measure stability and performance per watt on the
+  same CPU: extra load skews them.
+- Never push: the user pushes. Tags at the end of every phase verified on hardware; before the push the user
+  may ask to move the tag and `main` ("sposta tag e main"); after the push never.
+- Safety before features ("non voglio che mi esploda il computer"): see "Safety" in the plan and the
+  hardware invariants below. In doubt, refuse the write (fail closed) and explain why.
+- The user's machine is the only test hardware: AMD Ryzen 7 9800X3D (Granite Ridge), ASUS ROG STRIX X870E-H,
+  Fedora 44, KDE Plasma Wayland, Secure Boot on (the akmods MOK key is enrolled), NCT6799D fan chip, AIO with
+  the pump on pwm2. Ryzen Control 0.8.0 is installed and in use there, with calibrated profiles (custom
+  `new-auto`): Silicon Control must take them over (plan, phase 0) and the two must never run together.
+- Large independent work (research, a backend) can go to subagents in worktrees; review their commits with
+  the safety rules first, then merge; README, CLAUDE.md and the plan are updated by the main session.
+
+## Lessons from the hardware (inherited from Ryzen Control)
+
+Measured on the 9800X3D; they apply to every backend that writes limits or runs calibrations.
+The PM table reflects a new limit after tens of ms → readback with
 a wait (`READBACK_WAIT`); the baseline is recaptured only at boot, so after an update that
 changes the format the lines no longer allowed must be ignored (`profile_lines("baseline")`);
 the fake backend must never have real effects (e.g. `notify-send`) because the selftest runs in
@@ -128,7 +83,11 @@ button can wipe the files written in the last seconds (btrfs): even freshly crea
 A separate Eco calibration (FMax sweep for a Tctl target, margin +5) turned out redundant with
 Auto's undervolt: Eco now reuses the validated CO and the FMax sweep is gone.
 
-## Layout
+## Inherited from Ryzen Control (the imported code, old names)
+
+Accurate for the code as imported; update these sections as the plan's steps change it.
+
+### Layout
 
 - `ryzenctl` — Python stdlib, the only privileged entry point (CLI, `serve`, `selftest`).
 - `ryzen-control` — Python/PyGObject GUI (GTK4, libadwaita ≥ 1.5), runs as the user; a single
@@ -157,7 +116,7 @@ Auto's undervolt: Eco now reuses the validated CO and the FMax sweep is gone.
 Compatibility constraints: Python ≥ 3.9 syntax (no newer feature), libadwaita ≥ 1.5, no Python
 dependency beyond PyGObject, no test framework.
 
-## Commands
+### Commands
 
 Without hardware or root (run before every commit):
 
@@ -178,7 +137,7 @@ README "Hardware verification".
 Not on this machine: `dpkg-buildpackage`, `lintian`, `namcap` (run in containers: `make deb`, `make arch`),
 `stress-ng`. The deb/Arch packages are container-tested only: the README says so.
 
-## Architecture
+### Architecture
 
 ```
 ryzen-control (GUI, user) ──pkexec──▶ ryzenctl serve (root, validates EVERYTHING)
@@ -243,7 +202,7 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
   hwmon with real files under `$ROOT/sys/class/hwmon/hwmon0` and the physics in
   `Fake.after_fan_write`.
 
-## Hardware invariants (non-negotiable)
+### Hardware invariants (non-negotiable)
 
 - SMN: reads only, only the family's fuse addresses (`smn_read`); no SMN write, ever.
 - Strict SMU allowlist per family (`FAMILIES[codename]["cmd"]` at the top of `ryzenctl`; `smu()` never
@@ -301,12 +260,11 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
 
 ## Workflow
 
-- Local git repo, branches `main` (init only) and `dev` (development), no remote until the user
-  names one.
-- Step-by-step development following the plan's "Phases and commits" table: one commit per step,
-  **only after verifying** the step (`make check` at least). Failed verification → fix it, no commit.
-- Conventional prefix (`feat/fix/build/docs/chore/test`), message in English prose,
-  `Co-Authored-By` line required by the environment.
-- Tags `v0.1.0`, `v0.2.0`, … at the end of every phase verified on hardware; the tag version is
-  the one of `VERSION` in the Makefile and of the RPM spec (keep them aligned).
+- Branches `dev` (development) and `main` (releases only). No remote yet; when the user creates it, the
+  user pushes (`git push origin main dev vX.Y.Z`), never push from here.
+- Release: `main` gets a `--no-ff` merge of `dev` titled "Version X.Y.Z: …" and the annotated tag `vX.Y.Z`
+  ("Silicon Control X.Y.Z"); the tag version is `VERSION` in the Makefile, the RPM spec, debian/changelog and
+  PKGBUILD (`make check` enforces it). A pushed tag starts the release workflow (RPM, deb, Arch built in
+  containers, one job publishes them); GitHub releases are immutable, so a pushed tag is never moved. `gh` is
+  not installed: check the runs and the assets with curl on api.github.com.
 - Deliberate simplifications with a known ceiling are marked with a `# ponytail:` comment.

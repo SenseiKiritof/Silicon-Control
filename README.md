@@ -1,3 +1,7 @@
+> **Silicon Control** is being built from Ryzen Control 0.8.0 for every CPU vendor (plan:
+> `docs/plans/2026-10-13-silicon-control.md`). Until the rename (phase 0) the rest of this README
+> describes Ryzen Control as imported.
+
 # Ryzen Control
 
 Ryzen Master-style control for AMD Ryzen processors on Linux (Ryzen 9000 desktop verified; Ryzen
