@@ -34,8 +34,9 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   limits, TCC offset, turbo) on fakes only; step 7 (the Intel undervolt) stopped, not implemented (plan revision 6):
   never write an OC-mailbox module. Released as v0.3.0 (local tag) after the AMD regression on the 9800X3D. Phase 4
   (plan revision 7): the CPU report and the local hwtest record (step 8), the in-app check (step 9), README by vendor
-  and the issue template (step 10) done; next step 11, release 0.4.0 after the user's check, then the GitHub
-  repository the user creates.
+  and the issue template (step 10) done; released as v0.4.0 (local tag) after the check on the 9800X3D, which found
+  `bg` repeating its callbacks (fixed). Next, the rest of step 11: the user creates `SenseiKiritof/Silicon-Control`
+  (with the `cpu-report` label) and pushes, then the issue link of the check is tried.
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
