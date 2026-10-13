@@ -1606,7 +1606,7 @@ def cmd_status(ctx, args):
                    "tjmax": lim.get("thm_limit", intel.get("tjmax")), "stapm": lim.get("stapm_limit"),   # APUs: STAPM read only
                    "fast": lim.get("fast_limit"), "slow": lim.get("slow_limit"), "pl1": intel.get("pl1"), "pl2": intel.get("pl2")},
         "warnings": intel_warnings() if fam["backend"] == "intel" else [],
-        "version": VERSION, "checked": hwtest_record(),
+        "version": VERSION, "checked": hwtest_record(), "cpu_id": cpu_id(), "pm_offered": pm_offered(),
         "now": {"ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(), "tdc": lim.get("tdc"),
                 "tctl": tctl(), "tctl_pm": lim.get("tctl")},
         "power": power_get(), "boost": boost_get(),

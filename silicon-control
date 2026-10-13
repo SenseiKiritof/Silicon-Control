@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import urllib.parse
 from collections import deque
 
 # Software renderer: with the NVIDIA driver on Wayland the GTK4 GL renderer leaves fragments of
@@ -134,6 +135,22 @@ CSS = """
 .pad { padding: 6px 12px; }
 .profile-table > flowboxchild { padding: 3px 6px 3px 0; }
 """
+
+
+ISSUES = "https://github.com/SenseiKiritof/Silicon-Control/issues/new"
+ISSUE_BODY_MAX = 6000   # characters of the report in the link: GitHub cuts long URLs, the rest goes through the clipboard
+CHECK_TEXT = _("Save your work first. The check writes each function of this CPU slightly away from its stock value, "
+               "reads it back and restores it (a few seconds, the Curve Optimizer of one core included); then it shows a "
+               "report of the CPU to send, so that it can be added or verified. Nothing personal is in it: no host name, "
+               "no user, no serial number.")
+
+
+def issue_url(r):
+    """The prefilled GitHub issue of a `report` (title, body, the cpu-report template), and whether the body was cut."""
+    body, cut = r["report"], len(r["report"]) > ISSUE_BODY_MAX
+    if cut:
+        body = body[:ISSUE_BODY_MAX] + "\n\n(cut here: paste the full report from the clipboard)"
+    return ISSUES + "?" + urllib.parse.urlencode({"template": "cpu-report.md", "title": r["title"], "body": body}), cut
 
 
 class HelperError(Exception):
@@ -767,10 +784,11 @@ class MonitorPage(Gtk.Box):
         self.fan_labels = {}
         top = Gtk.Box(spacing=12)
         self.cpu = label("", ["heading"])   # family · active cores
-        self.unverified = label(_("Family not verified on hardware yet: run the Hardware check in Preferences"),
-                                ["warning"], wrap=True, visible=False)
-        top.append(self.cpu)
-        top.append(self.unverified)
+        self.unverified = label("", ["warning"], wrap=True, visible=False, hexpand=True)   # the check proposed, or done
+        self.check_btn = button(_("Check this CPU"), win.cpu_check, "suggested-action")
+        self.hide_btn = button(_("Hide"), self.hide_check)
+        for w in (self.cpu, self.unverified, self.check_btn, self.hide_btn):
+            top.append(w)
         self.append(top)
         self.why = label("", ["dim-label"], wrap=True, xalign=0.0, visible=False)   # why the generic backend
         self.append(self.why)
@@ -831,7 +849,15 @@ class MonitorPage(Gtk.Box):
 
     def refresh(self, st):   # the values live on `telemetry`; what this CPU reports decides the tiles and their names
         self.cpu.set_text(_("%s · %d cores") % (st.get("cpu", "?"), st.get("cores", 0)))
-        self.unverified.set_visible(not st.get("verified", True))
+        ok = (st.get("checked") or {}).get("esito") == "ok"
+        propose = (st.get("backend") == "generic" or not st.get("verified", True)) and not ok \
+            and self.win.ui.get("hide_cpu_check") != st.get("cpu_id")
+        self.unverified.set_text(_("Verified on this machine on %s (hardware check ok)") % st["checked"]["date"] if ok else
+                                 _("This CPU is not verified yet: check it and send the report, so that it can be added")
+                                 if propose else "")
+        self.unverified.set_visible(ok or propose)
+        self.check_btn.set_visible(propose)
+        self.hide_btn.set_visible(propose)
         generic, amd = st.get("backend") == "generic", st.get("backend", "amd") == "amd"
         self.why.set_text(_("Generic backend (kernel interfaces only): %s") % st.get("why_generic") if generic else "")
         self.why.set_visible(generic)
@@ -845,6 +871,12 @@ class MonitorPage(Gtk.Box):
             self.cards["ppt"].set_visible(not amd or "ppt" in caps or "fast" in caps)
             self.cards["tdc"].set_visible("tdc" in caps)
             self.cards["fmax"].set_visible("fmax" in caps)
+
+    def hide_check(self):
+        """The check stops being proposed for this CPU (Preferences keep it)."""
+        self.win.ui["hide_cpu_check"] = self.win.status.get("cpu_id")
+        ui_save(self.win.ui)
+        self.refresh(self.win.status)
 
     def telemetry(self, t):
         notes = laptop_notes(t.get("reapply"))
@@ -1780,11 +1812,9 @@ class PrefsPage(Adw.PreferencesPage):
         self.trust.connect("notify::active", self.on_trust)
         self.unlock = Adw.SwitchRow(title=_("Allow beyond the stock values"), subtitle=_("PPT/TDC/EDC up to the unlock ceilings, FMax above the baseline"))
         self.unlock.connect("notify::active", self.on_unlock)
-        hw = Adw.ActionRow(title=_("Hardware check"), subtitle=_("Writes and reads back one value per command, then restores the baseline"))
-        self.hw_spin = Gtk.Spinner(valign=Gtk.Align.CENTER)
-        self.hw_btn = button(_("Run"), self.hwtest)
-        hw.add_suffix(self.hw_spin)
-        hw.add_suffix(self.hw_btn)
+        hw = Adw.ActionRow(title=_("Hardware check"), subtitle=_("Writes and reads back one value per command, then restores "
+                                                                  "the baseline; then a report of this CPU to send"))
+        hw.add_suffix(button(_("Run"), win.cpu_check))
         for title, items in ((_("Startup"), (self.autostart, self.login, self.tray, self.minimized, self.trust)), (_("Limits and checks"), (self.unlock, hw))):
             g = Adw.PreferencesGroup(title=title)
             for r in items:
@@ -1857,20 +1887,6 @@ class PrefsPage(Adw.PreferencesPage):
             else:
                 self.win.reload()   # puts the switch back to the real state
         self.win.confirm(_("Stop asking for the password?"), TRUST_WARNING, _("Remember"), go)
-
-    def hwtest(self):
-        self.hw_btn.set_sensitive(False)
-        self.hw_spin.start()
-        def done(res):
-            self.hw_spin.stop()
-            self.hw_btn.set_sensitive(True)
-            self.win.info(_("Hardware check: ") + res.get("esito", "?"), "\n".join("%s: %s" % kv for kv in res.items()))
-            self.win.reload()
-        def fail(msg):
-            self.hw_spin.stop()
-            self.hw_btn.set_sensitive(True)
-            self.win.toast(msg)
-        bg(lambda: self.win.h.call("hwtest"), done, fail)
 
 
 class CpuPage(Page):
@@ -2363,6 +2379,66 @@ class Window(Adw.ApplicationWindow):
     def toast(self, msg):
         self.toasts.add_toast(Adw.Toast(title=str(msg), timeout=6))
 
+    def cpu_check(self):
+        """The check offered to the owner of an unverified or unknown CPU (Monitor, Preferences): hwtest, then the
+        report to send; the PM table only with consent and only where the helper offers it (not mapped here)."""
+        pm = Gtk.CheckButton(label=_("Include the PM table (read through the driver: an SMU command on a family not in "
+                                     "the table)")) if self.status.get("pm_offered") else None
+
+        def go(ok):
+            if not ok:
+                return
+            self.toast(_("Checking the CPU…"))
+            args = ["report", "pm"] if pm and pm.get_active() else ["report"]
+            bg(lambda: [self.h.call("hwtest"), self.h.call(*args)][1],
+               lambda r: (self.report_dialog(r), self.reload()), lambda m: (self.toast(m), self.reload()))
+        self.confirm(_("Check this CPU"), CHECK_TEXT, _("Check"), go, extra=pm)
+
+    def report_dialog(self, r):
+        view = Gtk.TextView(editable=False, monospace=True, wrap_mode=Gtk.WrapMode.WORD_CHAR)
+        view.get_buffer().set_text(r["report"])
+        d = Adw.AlertDialog(heading=_("CPU report"), body=_("Send it as an issue on GitHub (the browser opens it filled in: "
+                                                            "review it and submit it), or copy or save it."),
+                            extra_child=Gtk.ScrolledWindow(child=view, min_content_height=320, min_content_width=560))
+        for rid, text in (("close", _("Close")), ("copy", _("Copy")), ("save", _("Save…")), ("issue", _("Open issue on GitHub"))):
+            d.add_response(rid, text)
+        d.set_response_appearance("issue", Adw.ResponseAppearance.SUGGESTED)
+        d.connect("response", lambda _d, rid: self.report_action(rid, r))
+        d.present(self)
+        return d
+
+    def report_action(self, rid, r):
+        if rid == "copy":
+            self.get_clipboard().set(r["report"])
+            self.toast(_("Report copied"))
+        elif rid == "save":
+            Gtk.FileDialog(initial_name="cpu-report.md").save(self, None, lambda dlg, res: self.report_save(dlg, res, r["report"]))
+        elif rid == "issue":
+            url, cut = issue_url(r)
+            if cut:
+                self.get_clipboard().set(r["report"])
+
+            def opened(launcher, res):
+                try:
+                    launcher.launch_finish(res)
+                except GLib.Error as e:   # no browser: the link stays usable from the clipboard
+                    self.get_clipboard().set(url)
+                    self.toast(_("No browser could open the issue (%s): its link is on the clipboard") % e.message)
+            Gtk.UriLauncher.new(url).launch(self, None, opened)
+            self.toast(_("The report is cut in the issue: paste the full one from the clipboard") if cut else _("Issue opened in the browser"))
+
+    def report_save(self, dialog, res, text):
+        try:
+            path = dialog.save_finish(res).get_path()
+        except GLib.Error:   # cancelled
+            return
+        try:
+            with open(path, "w") as f:
+                f.write(text)
+            self.toast(_("Report saved: %s") % path)
+        except (OSError, TypeError) as e:
+            self.toast(str(e))
+
     def info(self, heading, body):
         d = Adw.AlertDialog(heading=heading, body=body)
         d.add_response("close", _("Close"))
@@ -2853,6 +2929,13 @@ class App(Adw.Application):
             cpu = next(p for p in win.pages if isinstance(p, CpuPage))
             assert cpu.params["pl1"].get_visible() == ("pl1" in win.status["caps"]), "PL1 row"
             assert mon.warn.get_visible() == cpu.warn.get_visible() == bool(win.status.get("warnings")), "warnings"
+            # the CPU check: proposed to an unverified or generic CPU not checked here, never to a verified one; the
+            # report's dialog and its issue link (never opened, nothing copied: the smoke runs in the user's session)
+            assert mon.check_btn.get_visible() == (not amd or not win.status["verified"]), "CPU check notice"
+            rep = win.h.call("report")
+            url, cut = issue_url(rep)
+            assert url.startswith(ISSUES + "?template=cpu-report.md&title=CPU+report") and not cut, url
+            win.report_dialog(rep).force_close()
             for k in (2, n):
                 old = curve.cores
                 mon.telemetry(dict(t, cores=t["cores"][:k]))

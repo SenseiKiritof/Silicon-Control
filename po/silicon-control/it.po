@@ -404,8 +404,6 @@ msgstr "Valori fissi ricavati da quelli di fabbrica, nessun test; più Default e
 msgid "Hardware check"
 msgstr "Verifica hardware"
 
-msgid "Hardware check: "
-msgstr "Verifica hardware: "
 
 msgid "Identify"
 msgstr "Identifica"
@@ -775,8 +773,6 @@ msgstr "Instabile a"
 msgid "Values set by hand in the CPU, Curves and Fans pages"
 msgstr "Valori impostati a mano nelle pagine CPU, Curve e Ventole"
 
-msgid "Writes and reads back one value per command, then restores the baseline"
-msgstr "Scrive e rilegge un valore per comando, poi ripristina la baseline"
 
 #, python-format
 msgid "Writes the %s profile without activating it: apply it from the Modes page"
@@ -956,8 +952,6 @@ msgstr "Curve Optimizer non disponibile su questa CPU: %s"
 msgid "%s · %d cores"
 msgstr "%s · %d core"
 
-msgid "Family not verified on hardware yet: run the Hardware check in Preferences"
-msgstr "Famiglia non ancora verificata sull'hardware: esegui la Verifica hardware nelle Preferenze"
 
 #, python-format
 msgid "One thread alone on each core, from idle to the highest boost: catches the CO instability that all-core loads miss. A core that fails is raised alone. Adds %s"
@@ -1236,3 +1230,63 @@ msgstr "Intel: limite di potenza a lungo termine (PL1), la potenza del package s
 
 msgid "Intel: short-term power limit (PL2), the package power allowed for bursts of seconds"
 msgstr "Intel: limite di potenza a breve termine (PL2), la potenza del package concessa per picchi di qualche secondo"
+
+msgid "CPU report"
+msgstr "Rapporto della CPU"
+
+msgid "Check"
+msgstr "Verifica"
+
+msgid "Check this CPU"
+msgstr "Verifica questa CPU"
+
+msgid "Checking the CPU…"
+msgstr "Verifica della CPU in corso…"
+
+msgid "Copy"
+msgstr "Copia"
+
+msgid "Hide"
+msgstr "Nascondi"
+
+msgid "Include the PM table (read through the driver: an SMU command on a family not in the table)"
+msgstr "Includi la PM table (letta tramite il driver: un comando SMU su una famiglia non in tabella)"
+
+msgid "Issue opened in the browser"
+msgstr "Issue aperta nel browser"
+
+#, python-format
+msgid "No browser could open the issue (%s): its link is on the clipboard"
+msgstr "Nessun browser ha potuto aprire la issue (%s): il suo link è negli appunti"
+
+msgid "Open issue on GitHub"
+msgstr "Apri issue su GitHub"
+
+msgid "Report copied"
+msgstr "Rapporto copiato"
+
+#, python-format
+msgid "Report saved: %s"
+msgstr "Rapporto salvato: %s"
+
+msgid "Save your work first. The check writes each function of this CPU slightly away from its stock value, reads it back and restores it (a few seconds, the Curve Optimizer of one core included); then it shows a report of the CPU to send, so that it can be added or verified. Nothing personal is in it: no host name, no user, no serial number."
+msgstr "Prima salva il tuo lavoro. La verifica scrive ogni funzione di questa CPU poco lontano dal valore di fabbrica, la rilegge e la ripristina (pochi secondi, compreso il Curve Optimizer di un core); poi mostra un rapporto della CPU da inviare, perché possa essere aggiunta o verificata. Non contiene nulla di personale: niente nome host, utente o numero di serie."
+
+msgid "Save…"
+msgstr "Salva…"
+
+msgid "Send it as an issue on GitHub (the browser opens it filled in: review it and submit it), or copy or save it."
+msgstr "Invialo come issue su GitHub (il browser la apre già compilata: rileggila e inviala), oppure copialo o salvalo."
+
+msgid "The report is cut in the issue: paste the full one from the clipboard"
+msgstr "Nella issue il rapporto è tagliato: incolla quello completo dagli appunti"
+
+msgid "This CPU is not verified yet: check it and send the report, so that it can be added"
+msgstr "Questa CPU non è ancora verificata: verificala e invia il rapporto, perché possa essere aggiunta"
+
+#, python-format
+msgid "Verified on this machine on %s (hardware check ok)"
+msgstr "Verificata su questa macchina il %s (controllo hardware ok)"
+
+msgid "Writes and reads back one value per command, then restores the baseline; then a report of this CPU to send"
+msgstr "Scrive e rilegge un valore per comando, poi ripristina la baseline; poi un rapporto di questa CPU da inviare"
