@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ryzen-control
+Source: https://github.com/SenseiKiritof/Ryzen-Control
+
+Files: *
+Copyright: 2026 senseikiritof
+License: GPL-3.0-or-later
+
+Files: ryzen_smu/*
+Copyright: 2020 Leonardo Gates; amkillam and the ryzen_smu contributors
+License: GPL-2.0-only
+
+License: GPL-3.0-or-later
+ On Debian systems the full text is in /usr/share/common-licenses/GPL-3.
+
+License: GPL-2.0-only
+ On Debian systems the full text is in /usr/share/common-licenses/GPL-2.

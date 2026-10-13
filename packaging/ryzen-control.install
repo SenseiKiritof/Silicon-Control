@@ -1,0 +1,9 @@
+post_install() {
+  echo ">>> ryzen-control: enable the services (they apply nothing until you choose a profile):"
+  echo ">>>   sudo systemctl enable --now ryzenctl.service ryzenctl-resume.service ryzenctl-reapply.timer"
+  echo ">>> With Secure Boot the ryzen_smu module must be signed with an enrolled key (see the README)."
+}
+
+post_upgrade() {
+  systemctl daemon-reload >/dev/null 2>&1 || true
+}

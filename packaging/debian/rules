@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+# The installed layout comes from the project's Makefile, as for the RPM (make install DESTDIR=…).
+DRV_VERSION := $(shell sed -n 's/^DRV_VERSION := //p' Makefile)
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE) locales
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/ryzen-control PREFIX=/usr
+
+# make check needs a display and desktop validators: the selftest (fake backend) runs here
+override_dh_auto_test:
+	python3 ryzenctl selftest
+
+# the dkms.conf that make install generated (one place for the module version): postinst/prerm and the
+# dkms dependency come from it
+override_dh_dkms:
+	cp debian/ryzen-control/usr/src/ryzen_smu-$(DRV_VERSION)/dkms.conf debian/dkms.conf.generated
+	dh_dkms -- debian/dkms.conf.generated
+
+# ryzenctl.service starts at once (loads the module, captures the baseline, applies nothing);
+# the resume unit is only enabled; the reapply timer is enabled and started (a no-op without a laptop
+# profile), its service is never started at install (the timer and the udev rule start it)
+override_dh_installsystemd:
+	dh_installsystemd ryzenctl.service
+	dh_installsystemd --no-start ryzenctl-resume.service
+	dh_installsystemd ryzenctl-reapply.timer

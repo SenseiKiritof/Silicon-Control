@@ -1,0 +1,15 @@
+[Unit]
+Description=Ryzen Control: re-applies the profile's power limits that the laptop firmware rewrote
+# Started by ryzenctl-reapply.timer and by 60-ryzen-control.rules (AC plugged or unplugged). The flag exists only on
+# a laptop with "Apply at startup" and a profile that changes a limit (ryzenctl writes it): nothing runs elsewhere.
+After=ryzenctl.service
+ConditionKernelCommandLine=!ryzenctl.off
+ConditionPathExists=/run/ryzenctl/reapply-wanted
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ryzenctl reapply
+# Every 10 s: systemd's own lines about the unit (started, finished, skipped) stay out of the journal; ryzenctl prints
+# only what it re-applied, and its errors.
+SyslogLevel=notice
+LogLevelMax=notice

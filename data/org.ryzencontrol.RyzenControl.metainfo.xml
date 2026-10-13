@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.ryzencontrol.RyzenControl</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Ryzen Control</name>
+  <summary>Curve Optimizer, PBO limits and fans for Ryzen</summary>
+  <summary xml:lang="it">Curve Optimizer, limiti PBO e ventole per Ryzen</summary>
+  <description>
+    <p>
+      Ryzen Master-style control for AMD Ryzen processors on Linux (Ryzen 9000 desktop
+      verified, Ryzen 1000–7000 desktop and the APUs of desktops, mini PCs and laptops expected):
+      per-core Curve Optimizer and Curve Shaper, PPT/TDC/EDC limits, boost frequency and
+      maximum temperature, power profile and motherboard fans.
+    </p>
+    <p xml:lang="it">
+      Controllo stile Ryzen Master per processori AMD Ryzen su Linux (Ryzen 9000 desktop
+      verificati, Ryzen 1000–7000 desktop e gli APU di desktop, mini PC e portatili attesi):
+      Curve Optimizer e Curve Shaper per core, limiti PPT/TDC/EDC, frequenza di boost e
+      temperatura massima, profilo energetico e ventole della scheda madre.
+    </p>
+    <p>
+      Default, Quiet, Performance, Eco, Auto and Boost modes with automatic calibration, profiles applied at
+      boot and protection after a crash: the profile is not reapplied until the user decides.
+    </p>
+    <p xml:lang="it">
+      Modalità Default, Quiet, Performance, Eco, Auto e Boost con calibrazione automatica, profili applicati
+      all'avvio e protezione dopo un crash: il profilo non viene riapplicato finché non lo
+      decide l'utente.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.ryzencontrol.RyzenControl.desktop</launchable>
+  <url type="homepage">https://github.com/SenseiKiritof/Ryzen-Control</url>
+  <provides>
+    <binary>ryzen-control</binary>
+    <binary>ryzenctl</binary>
+  </provides>
+  <developer id="org.ryzencontrol">
+    <name>Ryzen Control</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.8.0" date="2026-10-13"/>
+    <release version="0.7.1" date="2026-10-13"/>
+    <release version="0.7.0" date="2026-10-13"/>
+    <release version="0.6.0" date="2026-10-13"/>
+    <release version="0.5.1" date="2026-10-13"/>
+    <release version="0.5.0" date="2026-10-12"/>
+    <release version="0.1.0" date="2026-10-09"/>
+  </releases>
+</component>

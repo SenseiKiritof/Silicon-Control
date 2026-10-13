@@ -1,0 +1,69 @@
+# On every v* tag: the RPM (Fedora), the .deb (Debian) and the Arch package are built and checked in
+# containers, in parallel; then the GitHub release is created once, with all of them (the repository's
+# releases are immutable: nothing can be attached after publishing). The tag must match VERSION in the
+# Makefile (same rule as the local tags).
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Build dependencies
+        run: dnf install -y git make rpm-build rpmdevtools systemd-rpm-macros python3
+      - uses: actions/checkout@v7
+      - name: Tag matches VERSION
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          v="$(sed -n 's/^VERSION := //p' Makefile)"
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME ≠ VERSION $v"; exit 1; }
+      - name: Selftest (fake backend)
+        run: python3 ryzenctl selftest
+      - name: RPM
+        run: make rpm
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rpm
+          path: |
+            dist/*.rpm
+            dist/*.tar.gz
+  # same scripts as make deb / make arch
+  deb:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and check the .deb (lintian)
+        run: sh packaging/build-deb.sh dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb
+          path: dist/*.deb
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and check the Arch package (makepkg, namcap)
+        run: sh packaging/build-arch.sh dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arch
+          path: dist/*.pkg.tar.zst
+  release:
+    needs: [rpm, deb, arch]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Release with every package, created once
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          generate_release_notes: true

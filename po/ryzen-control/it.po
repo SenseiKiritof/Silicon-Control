@@ -1,0 +1,1222 @@
+# Italian translation of the Ryzen Control GUI (ryzen-control).
+# This file is distributed under the same license as the Ryzen Control package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: ryzen-control 0.4.2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-10 12:00+0200\n"
+"PO-Revision-Date: 2026-10-10 12:00+0200\n"
+"Last-Translator: \n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#, python-format
+msgid " (load: %s)"
+msgstr " (carico: %s)"
+
+#, python-format
+msgid " (undervolt validated by the final pass of %s: no load test)"
+msgstr " (undervolt validato dalla passata finale del %s: nessun test di carico)"
+
+#, python-format
+msgid " (≈ %d rpm)"
+msgstr " (≈ %d giri)"
+
+msgid " Drag the slider or type the number, then \"Apply now\". The Curve Shaper is experimental on this platform: set it from the BIOS."
+msgstr " Trascina lo slider o scrivi il numero, poi \"Applica ora\". Il Curve Shaper è sperimentale su questa piattaforma: va impostato dal BIOS."
+
+msgid " and "
+msgstr " e "
+
+#, python-format
+msgid " · %d rpm at 100 %%"
+msgstr " · %d giri al 100 %%"
+
+msgid " — profile not created yet: tick to create it"
+msgstr " — profilo non ancora creato: spunta per crearlo"
+
+#, python-format
+msgid "%+d mV (%s → %s%s at CO %d)"
+msgstr "%+d mV (%s → %s%s a CO %d)"
+
+#, python-format
+msgid "%d rpm · pwm %d (%d %%) · mode %d%s"
+msgstr "%d giri/min · pwm %d (%d %%) · modo %d%s"
+
+#, python-format
+msgid "%d s ago"
+msgstr "%d s fa"
+
+#, python-format
+msgid "%s %s %s: %.0f op/s at %.0f W → trying %s %s…%s"
+msgstr "%s %s %s: %.0f op/s a %.0f W → provo %s %s…%s"
+
+#, python-format
+msgid "%s %s %s: measuring performance and power…%s"
+msgstr "%s %s %s: misuro prestazioni e potenza…%s"
+
+#, python-format
+msgid "%s (%s) · %d rpm%s"
+msgstr "%s (%s) · %d giri/min%s"
+
+#, python-format
+msgid "%s calibration"
+msgstr "Calibrazione %s"
+
+#, python-format
+msgid "%s calibration parameters"
+msgstr "Parametri della calibrazione %s"
+
+#, python-format
+msgid "%s profile saved (not applied)"
+msgstr "Profilo %s salvato (non applicato)"
+
+#, python-format
+msgid "%s profile saved and applied"
+msgstr "Profilo %s salvato e applicato"
+
+#, python-format
+msgid "%s profile: stock → calibrated"
+msgstr "Profilo %s: fabbrica → calibrato"
+
+#, python-format
+msgid "%s sweep:\n"
+msgstr "Sweep %s:\n"
+
+msgid "+ point"
+msgstr "+ punto"
+
+#, python-format
+msgid ", CO level %s"
+msgstr ", livello CO %s"
+
+#, python-format
+msgid ", core %s"
+msgstr ", core %s"
+
+msgid "0 min"
+msgstr "0 min"
+
+#, python-format
+msgid "A %s calibration started on %s was left halfway (%s). %s Resume it from where it was, or discard it and stay on the stock values?"
+msgstr "Una calibrazione %s iniziata il %s è rimasta a metà (%s). %s Riprenderla da dove era o annullarla restando ai valori di fabbrica?"
+
+msgid "A polkit rule is written that authorises your user, in the active local session, to start \"ryzenctl serve\" without a password: it only covers Ryzen Control, it is not a generic sudo. In exchange, any program run as your user will be able to change limits, Curve Optimizer and fans without asking you anything (always within the ryzenctl ceilings). It can be disabled from here at any time."
+msgstr "Viene scritta una regola polkit che autorizza il tuo utente, nella sessione locale attiva, ad avviare «ryzenctl serve» senza password: vale solo per Ryzen Control, non è un sudo generico. In cambio, qualunque programma eseguito col tuo utente potrà cambiare limiti, Curve Optimizer e ventole senza chiederti nulla (sempre entro i tetti di ryzenctl). Si disattiva da qui in qualsiasi momento."
+
+msgid "Adapts to the hardware with load tests"
+msgstr "Si adatta all'hardware con test di carico"
+
+msgid "All"
+msgstr "Tutti"
+
+msgid "Allow beyond the stock values"
+msgstr "Consenti oltre i valori di fabbrica"
+
+msgid "Applied: "
+msgstr "Applicato: "
+
+msgid "Apply at startup"
+msgstr "Applica all'avvio"
+
+msgid "Apply now"
+msgstr "Applica ora"
+
+msgid "Auto"
+msgstr "Auto"
+
+msgid "Automatic (BIOS) — recommended"
+msgstr "Automatica (BIOS) — consigliata"
+
+msgid "Automatic (recommended)"
+msgstr "Automatica (consigliata)"
+
+#, python-format
+msgid "Automatic (recommended): %s\n\n%s\n\n%s"
+msgstr "Automatica (consigliata): %s\n\n%s\n\n%s"
+
+msgid "Baseline of this boot missing: no CPU write possible (ryzenctl.service did not capture it, see `ryzenctl status`)."
+msgstr "Baseline di questo boot assente: nessuna scrittura CPU possibile (ryzenctl.service non l'ha catturata, vedi `ryzenctl status`)."
+
+msgid "Beyond the stock values?"
+msgstr "Oltre i valori di fabbrica?"
+
+msgid "Boost"
+msgstr "Boost"
+
+msgid "Boost needs \"Allow beyond the stock values\": turn it on in Preferences"
+msgstr "Boost richiede \"Consenti oltre i valori di fabbrica\": attivalo nelle Preferenze"
+
+msgid "CO (Curve Optimizer)"
+msgstr "CO (Curve Optimizer)"
+
+msgid "CO (Curve Optimizer) limit"
+msgstr "Limite CO (Curve Optimizer)"
+
+#, python-format
+msgid "CO (Curve Optimizer) limit already measured on %s: reused (repeat the search from \"Choose the values…\"), %s — %smargin %d, %d s per test."
+msgstr "Limite di CO (Curve Optimizer) già misurato il %s: riusato (ripeti la ricerca da \"Scegli i valori…\"), %s — %smargine %d, %d s per test."
+
+msgid "CO (Curve Optimizer) per core"
+msgstr "CO (Curve Optimizer) per core"
+
+msgid "CO (Curve Optimizer) per core: stock → final, with the measured voltage"
+msgstr "CO (Curve Optimizer) per core: fabbrica → definitivo, con la tensione misurata"
+
+msgid "CO (Curve Optimizer): "
+msgstr "CO (Curve Optimizer): "
+
+#, python-format
+msgid "CO level %d: testing all cores together (still under test: %d cores)…"
+msgstr "Livello CO %d: provo tutti i core insieme (ancora in prova: %d core)…"
+
+msgid "CO level under test on the core; below, the last voltage measured at full load and the difference from the reference"
+msgstr "Livello di CO in prova sul core; sotto, l'ultima tensione misurata a pieno carico e la differenza dal riferimento"
+
+#, python-format
+msgid "CO limit reused from the measurement of %s. %s"
+msgstr "Limite CO riusato dalla misura del %s. %s"
+
+msgid "CO search"
+msgstr "ricerca CO"
+
+msgid "CPU"
+msgstr "CPU"
+
+msgid "CPU temperature and power"
+msgstr "Temperatura e potenza della CPU"
+
+#, python-format
+msgid "Calibrate the %s mode?"
+msgstr "Calibrare la modalità %s?"
+
+msgid "Calibrated"
+msgstr "Calibrate"
+
+msgid "Calibrated with load tests, maximum power: aggressive undervolt (measured limit + margin 3), limits and FMax at the allowed ceilings, measured gain"
+msgstr "Calibrata con test di carico, potenza massima: undervolt spinto (limite misurato + margine 3), limiti e FMax ai tetti consentiti, guadagno misurato"
+
+msgid "Calibrated with load tests: undervolt (measured limit + margin 3), PPT and FMax at the performance/watt knee"
+msgstr "Calibrata con test di carico: undervolt (limite misurato + margine 3), PPT e FMax al ginocchio prestazioni/watt"
+
+msgid "Calibrate…"
+msgstr "Calibra…"
+
+msgid "Calibration complete"
+msgstr "Calibrazione completata"
+
+msgid "Calibration complete: discard, save, or save and apply?"
+msgstr "Calibrazione completata: annullare, salvare o salvare e applicare?"
+
+msgid "Calibration discarded, CPU at baseline"
+msgstr "Calibrazione annullata, CPU a baseline"
+
+msgid "Calibration ended without a profile to save"
+msgstr "Calibrazione terminata senza un profilo da salvare"
+
+msgid "Calibration ended: "
+msgstr "Calibrazione terminata: "
+
+msgid "Calibration in progress: use \"Stop\""
+msgstr "Calibrazione in corso: usa \"Interrompi\""
+
+msgid "Calibration interrupted"
+msgstr "Calibrazione interrotta"
+
+msgid "Cancel"
+msgstr "Annulla"
+
+msgid "Cap or fixed speed of the pump (50–100 %)"
+msgstr "Tetto o velocità fissa della pompa (50–100 %)"
+
+#, python-format
+msgid "Channel %d"
+msgstr "Canale %d"
+
+#, python-format
+msgid "Channel %d at 100 %% for 5 seconds…"
+msgstr "Canale %d al 100 %% per 5 secondi…"
+
+#, python-format
+msgid "Channel %d: %d rpm at 100 %%"
+msgstr "Canale %d: %d giri/min al 100 %%"
+
+#, python-format
+msgid "Chip %s available"
+msgstr "Chip %s disponibile"
+
+msgid "Choose the values…"
+msgstr "Scegli i valori…"
+
+msgid "Close"
+msgstr "Chiudi"
+
+msgid "Core"
+msgstr "Core"
+
+#, python-format
+msgid "Core %d"
+msgstr "Core %d"
+
+#, python-format
+msgid "Core %d: testing CO %d…"
+msgstr "Core %d: provo CO %d…"
+
+msgid "Core voltage at this instant (PM table)"
+msgstr "Tensione del core a questo istante (PM table)"
+
+msgid "Crash with an active profile"
+msgstr "Crash con profilo attivo"
+
+msgid "Create and apply"
+msgstr "Crea e applica"
+
+#, python-format
+msgid "Create the '%s' profile?"
+msgstr "Creare il profilo '%s'?"
+
+msgid "Curve (°C → %)"
+msgstr "Curva (°C → %)"
+
+msgid "Curve Optimizer: per-core offset of the voltage/frequency curve. Negative = less voltage at the same frequency (less heat and power draw, higher boost); too negative = instability or reboot. Unit: steps of about 3–5 mV."
+msgstr "Curve Optimizer: offset per core della curva tensione/frequenza. Negativo = meno tensione a parità di frequenza (meno calore e consumo, boost più alto); troppo negativo = instabilità o riavvio. Unità: passi di circa 3–5 mV."
+
+msgid "Curves"
+msgstr "Curve"
+
+msgid "Custom"
+msgstr "Custom"
+
+msgid "Decide…"
+msgstr "Decidi…"
+
+msgid "Default"
+msgstr "Default"
+
+msgid "Detect roles"
+msgstr "Rileva ruoli"
+
+msgid "Detect the channel roles?"
+msgstr "Rilevare i ruoli dei canali?"
+
+msgid "Detected roles"
+msgstr "Ruoli rilevati"
+
+msgid "Discard"
+msgstr "Annulla"
+
+msgid "Discard calibration"
+msgstr "Annulla calibrazione"
+
+#, python-format
+msgid "Done: from the next start no password for %s"
+msgstr "Fatto: dal prossimo avvio nessuna password per %s"
+
+msgid "Duration of each test"
+msgstr "Durata di ogni test"
+
+msgid "EDC"
+msgstr "EDC"
+
+msgid "EDC limit "
+msgstr "EDC limite "
+
+msgid "Eco"
+msgstr "Eco"
+
+msgid "Enable (loads the nct6775 module)"
+msgstr "Abilita (carica il modulo nct6775)"
+
+msgid "Error: "
+msgstr "Errore: "
+
+#, python-format
+msgid "Estimated duration: %s"
+msgstr "Durata stimata: %s"
+
+#, python-format
+msgid "Estimated time remaining: %s"
+msgstr "Tempo rimanente stimato: %s"
+
+msgid "Every channel with rpm > 0 is brought to a reduced PWM for about 30 seconds under load (stress-ng), with Tctl monitored: a pump is recognised by the rise in temperature. Duration: about 30 s per channel. At the end the channels go back to how they were."
+msgstr "Ogni canale con giri > 0 viene portato a un PWM ridotto per circa 30 secondi sotto carico (stress-ng), con Tctl sorvegliata: una pompa si riconosce dall'aumento di temperatura. Durata: circa 30 s per canale. Al termine i canali tornano come erano."
+
+msgid "Every core is brought to an ever more negative CO (Curve Optimizer) under load (stress-ng) as long as it stays stable, then a final pass on all cores and on each core alone; finally, for Auto the performance/watt knee, for Boost the measurement of the gain (MT and ST) over stock, while Eco takes the reduced limits of its preset. The CO limit search is shared by Eco, Auto and Boost and later calibrations reuse it; Eco also reuses a final pass already passed at the same CO (for example Auto's) without any load test. An unstable CO can reboot the PC without warning: save everything before starting. The machine stays usable but slowed down; the calibration resumes from where it was."
+msgstr "Ogni core viene portato a CO (Curve Optimizer) sempre più negativo sotto carico (stress-ng) finché resta stabile, poi una passata finale su tutti i core e su ogni core da solo; infine, per Auto il ginocchio prestazioni/watt, per Boost la misura del guadagno (MT e ST) rispetto alla fabbrica, mentre Eco prende i limiti ridotti del suo preset. La ricerca del limite CO è unica per Eco, Auto e Boost e le calibrazioni successive la riusano; Eco riusa anche una passata finale già superata allo stesso CO (per esempio quella di Auto) senza alcun test di carico. Un CO instabile può riavviare il PC all'improvviso: salva tutto prima di iniziare. La macchina resta usabile ma rallentata; la calibrazione riprende da dove era."
+
+msgid "FMax"
+msgstr "FMax"
+
+msgid "FMax knee"
+msgstr "ginocchio FMax"
+
+msgid "Fall"
+msgstr "Discesa"
+
+#, python-format
+msgid "Fan %d"
+msgstr "Ventola %d"
+
+#, python-format
+msgid "Fan %d curve"
+msgstr "Ventola %d curva"
+
+msgid "Fan target Tctl"
+msgstr "Tctl obiettivo ventole"
+
+msgid "Fans"
+msgstr "Ventole"
+
+msgid "Fans not available"
+msgstr "Ventole non disponibili"
+
+msgid "Final"
+msgstr "Definitivo"
+
+#, python-format
+msgid "Final pass failed at CO %s (%s): +3 on every core and a new attempt"
+msgstr "Passata finale fallita a CO %s (%s): +3 su tutti i core e nuovo tentativo"
+
+#, python-format
+msgid "Final pass on all cores at CO %s (attempt %d/3)"
+msgstr "Passata finale su tutti i core a CO %s (tentativo %d/3)"
+
+msgid "Fixed preset: reduced limits, FMax −400, slow-reacting fans"
+msgstr "Preset fisso: limiti ridotti, FMax −400, ventole lente a reagire"
+
+msgid "Fixed preset: stock values, power mode at maximum"
+msgstr "Preset fisso: valori di fabbrica, energia al massimo"
+
+msgid "Fixed speed"
+msgstr "Velocità fissa"
+
+msgid "Fixed values derived from the stock ones, no test"
+msgstr "Valori fissi ricavati da quelli di fabbrica, nessun test"
+
+msgid "Fixed values derived from the stock ones, no test; plus Default and Custom"
+msgstr "Valori fissi ricavati da quelli di fabbrica, nessun test; più Default e Custom"
+
+msgid "Hardware check"
+msgstr "Verifica hardware"
+
+msgid "Hardware check: "
+msgstr "Verifica hardware: "
+
+msgid "Identify"
+msgstr "Identifica"
+
+msgid "Last stable"
+msgstr "Ultimo stabile"
+
+msgid "Limits and checks"
+msgstr "Limiti e verifiche"
+
+#, python-format
+msgid "Mark as %s"
+msgstr "Segna %s"
+
+msgid "Maximum boost frequency: lowering it cuts the temperature peaks with little loss"
+msgstr "Frequenza massima di boost: abbassarla taglia i picchi di temperatura con poca perdita"
+
+msgid "Maximum cap"
+msgstr "Tetto massimo"
+
+msgid "Maximum package power (Package Power Tracking): lower = less heat and power draw, less boost under full load"
+msgstr "Potenza massima del package (Package Power Tracking): più bassa = meno calore e consumo, meno boost sotto carico pieno"
+
+msgid "Maximum peak current (Electrical Design Current) supplied by the VRMs"
+msgstr "Corrente massima di picco (Electrical Design Current) fornita dai VRM"
+
+msgid "Maximum sustained current (Thermal Design Current) supplied by the VRMs"
+msgstr "Corrente massima sostenuta (Thermal Design Current) fornita dai VRM"
+
+#, python-format
+msgid "Measured gain: multi-thread %s (%s → %s op/s), single-thread %s"
+msgstr "Guadagno misurato: multi-thread %s (%s → %s op/s), single-thread %s"
+
+msgid "Measured on this CPU with load tests (Calibrate…)"
+msgstr "Misurate su questa CPU con test di carico (Calibra…)"
+
+#, python-format
+msgid "Measured on this CPU: ≈ %s mV per CO step"
+msgstr "Misurato su questa CPU: ≈ %s mV per passo di CO"
+
+msgid "Measured ΔV"
+msgstr "ΔV misurata"
+
+msgid "Measures on this CPU: per-core undervolt, FMax, limits and fans"
+msgstr "Misura su questa CPU: undervolt per core, FMax, limiti e ventole"
+
+msgid "Measuring performance at stock and in boost (MT and ST)…"
+msgstr "Misuro le prestazioni a fabbrica e in boost (MT e ST)…"
+
+msgid "Modes"
+msgstr "Modalità"
+
+msgid "Monitor"
+msgstr "Monitor"
+
+msgid "No changes to apply"
+msgstr "Nessuna modifica da applicare"
+
+msgid "No fans detected"
+msgstr "Nessuna ventola rilevata"
+
+msgid "Normally the pump should be left to the BIOS (recommended). If at full load it rises to 100 % and hums, it can be limited: \"Maximum cap\" keeps the BIOS curve clipping the points above the cap, \"Fixed speed\" keeps it constant. Never below 50 %: the flow is not enough."
+msgstr "Di norma la pompa va lasciata al BIOS (consigliato). Se a pieno carico sale al 100 % e ronza, si può limitarla: «Tetto massimo» mantiene la curva del BIOS tagliando i punti sopra il tetto, «Velocità fissa» la tiene costante. Mai sotto il 50 %: il flusso non basta."
+
+msgid "Nothing to save"
+msgstr "Niente da salvare"
+
+#, python-format
+msgid "Off: one core at a time, slower (%s) but attributes even a reboot with certainty"
+msgstr "Spento: un core alla volta, più lento (%s) ma attribuisce con certezza anche un riavvio"
+
+#, python-format
+msgid "Off: reuses the measurement of %s; on: measures the limit again (longer)"
+msgstr "Spenta: riusa la misura del %s; accesa: misura di nuovo il limite (più lunga)"
+
+msgid "One CO (Curve Optimizer) step is worth about 3–5 mV less voltage at the same frequency; here you see the real voltage measured at full load for every level."
+msgstr "Un passo di CO (Curve Optimizer) vale circa 3–5 mV di tensione in meno a parità di frequenza; qui vedi la tensione reale misurata a pieno carico per ogni livello."
+
+msgid "Only the Quiet fan level uses it: minimum speed up to this value −10 °C"
+msgstr "Lo usa solo il livello ventole Silenziose: velocità minima fino a questo valore −10 °C"
+
+msgid "Opens the window at every login, or only the tray icon with \"Start minimized\" (the password is asked at the first use, unless \"Stop asking for the password\" is on). After a crash it shows the warning and leaves the profile deactivated: it never re-applies anything on its own"
+msgstr "Apre la finestra a ogni login, oppure solo l'icona nel vassoio con «Avvia ridotto a icona» (la password viene chiesta al primo uso, salvo «Non chiedere più la password»). Dopo un crash mostra l'avviso e lascia il profilo disattivato: non riapplica mai nulla da solo"
+
+msgid "PPT"
+msgstr "PPT"
+
+msgid "PPT knee"
+msgstr "ginocchio PPT"
+
+msgid "PPT limit"
+msgstr "limite PPT"
+
+msgid "PPT, TDC and EDC will be allowed beyond the stock values and FMax beyond the baseline (up to the ryzenctl unlock ceilings). More heat and power draw, possible sudden reboots: save your work. Tjmax stays limited to the baseline anyway."
+msgstr "Verranno ammessi PPT, TDC ed EDC oltre i valori di fabbrica e FMax oltre la baseline (fino ai tetti di sblocco di ryzenctl). Più calore e consumo, possibili riavvii improvvisi: salva il lavoro. Tjmax resta comunque limitata alla baseline."
+
+msgid "PPT/TDC/EDC up to the unlock ceilings, FMax above the baseline"
+msgstr "PPT/TDC/EDC fino ai tetti di sblocco, FMax oltre la baseline"
+
+msgid "PPT: maximum package power (on APUs fast/slow PPT: short-term and sustained power) · TDC/EDC: sustained/peak current · FMax: maximum boost frequency · Tjmax: temperature at which the CPU slows down. Drag the slider or type the number, then \"Apply now\"."
+msgstr "PPT: potenza massima del package (sugli APU PPT fast/slow: potenza di breve durata e sostenuta) · TDC/EDC: corrente sostenuta/di picco · FMax: frequenza massima di boost · Tjmax: temperatura a cui la CPU rallenta. Trascina il cursore o scrivi il numero, poi \"Applica ora\"."
+
+msgid "Password asked again at every start"
+msgstr "Password di nuovo richiesta a ogni avvio"
+
+msgid "Performance"
+msgstr "Performance"
+
+#, python-format
+msgid "Performance/watt knee: PPT %d W%s (maximum loss %d %%)"
+msgstr "Ginocchio prestazioni/watt: PPT %d W%s (perdita massima %d %%)"
+
+msgid ", FMax %d MHz"
+msgstr ", FMax %d MHz"
+
+msgid "Calibrated modes measure the per-core Curve Optimizer, not available on this CPU: %s"
+msgstr "Le modalità calibrate misurano il Curve Optimizer per core, non disponibile su questa CPU: %s"
+
+msgid "Precision Boost (kernel switch): off keeps the clock at the base frequency, the frequency lever of CPUs without FMax"
+msgstr "Precision Boost (interruttore del kernel): spento tiene la frequenza base, la leva sulla frequenza delle CPU senza FMax"
+
+msgid "Polkit rule for your user, only for Ryzen Control in the local session: the password is needed once to write it, then never again"
+msgstr "Regola polkit per il tuo utente, solo per Ryzen Control nella sessione locale: la prima volta la password serve per scriverla, poi mai più"
+
+msgid "Power mode"
+msgstr "Energia"
+
+msgid "Power mode: "
+msgstr "Profilo energetico: "
+
+msgid "Preferences"
+msgstr "Preferenze"
+
+msgid "Presets"
+msgstr "Preset"
+
+#, python-format
+msgid "Profile '%s' applied"
+msgstr "Profilo '%s' applicato"
+
+#, python-format
+msgid "Profile '%s' created and applied"
+msgstr "Profilo '%s' creato e applicato"
+
+#, python-format
+msgid "Profile '%s' reactivated"
+msgstr "Profilo '%s' riattivato"
+
+#, python-format
+msgid "Profile '%s' regenerated"
+msgstr "Profilo '%s' rigenerato"
+
+#, python-format
+msgid "Profile '%s' saved (%d lines)"
+msgstr "Profilo '%s' salvato (%d righe)"
+
+msgid "Profile lines"
+msgstr "Righe del profilo"
+
+msgid "Pump"
+msgstr "Pompa"
+
+#, python-format
+msgid "Pump %d"
+msgstr "Pompa %d"
+
+msgid "Quiet"
+msgstr "Quiet"
+
+msgid "Re-applies the selected profile at boot and on resume"
+msgstr "Riapplica il profilo selezionato al boot e al resume"
+
+#, python-format
+msgid "Reaction: rise %s s · fall %s s — how quickly the fan follows the curve; high values ignore short peaks"
+msgstr "Reazione: salita %s s · discesa %s s — quanto in fretta la ventola segue la curva; valori alti ignorano i picchi brevi"
+
+msgid "Reactivate"
+msgstr "Riattiva"
+
+msgid "Reboot required: acpi_enforce_resources=lax added to the kernel command line"
+msgstr "Riavvio necessario: aggiunto acpi_enforce_resources=lax alla riga del kernel"
+
+msgid "Regenerate"
+msgstr "Rigenera"
+
+#, python-format
+msgid "Regenerate '%s' from the stock values?"
+msgstr "Rigenerare '%s' dai valori di fabbrica?"
+
+msgid "Regenerate the profile from the stock values"
+msgstr "Rigenera il profilo dai valori di fabbrica"
+
+msgid "Remember"
+msgstr "Ricorda"
+
+msgid "Repeat the CO limit search"
+msgstr "Ripeti la ricerca del limite CO"
+
+msgid "Reset to read values"
+msgstr "Ripristina valori letti"
+
+msgid "Resume"
+msgstr "Riprendi"
+
+msgid "Rise"
+msgstr "Salita"
+
+msgid "Run"
+msgstr "Esegui"
+
+msgid "Safety margin"
+msgstr "Margine di sicurezza"
+
+msgid "Same undervolt as Auto (validated), lower power, FMax −400, Tjmax 80 °C, fans at the minimum at light load: quiet under heavy load"
+msgstr "Stesso undervolt di Auto (validato), potenza ridotta, FMax −400, Tjmax 80 °C, ventole al minimo a basso carico: silenziosa sotto carico pesante"
+
+msgid "Save"
+msgstr "Salva"
+
+msgid "Save and apply"
+msgstr "Salva e applica"
+
+msgid "Save to profile"
+msgstr "Salva nel profilo"
+
+msgid "Save to profile…"
+msgstr "Salva nel profilo…"
+
+msgid "Set the values in the CPU, Curves and Fans pages and use \"Apply now\""
+msgstr "Imposta i valori nelle pagine CPU, Curve e Ventole e usa \"Applica ora\""
+
+msgid "Start"
+msgstr "Avvia"
+
+msgid "Start Ryzen Control at login"
+msgstr "Avvia Ryzen Control al login"
+
+#, python-format
+msgid "Started at %s · estimated %s in total"
+msgstr "Avviata alle %s · stimati %s in totale"
+
+msgid "Starting…"
+msgstr "Avvio…"
+
+msgid "Startup"
+msgstr "Avvio"
+
+msgid "Stay on Default"
+msgstr "Resta su Default"
+
+msgid "Stock"
+msgstr "Fabbrica"
+
+msgid "Stock CO; below, the reference voltage measured at start under the same load"
+msgstr "CO di fabbrica; sotto, la tensione di riferimento misurata all'avvio con lo stesso carico"
+
+msgid "Stock values (baseline)"
+msgstr "Valori di fabbrica (baseline)"
+
+msgid "Stock values applied"
+msgstr "Valori di fabbrica applicati"
+
+msgid "Stock values → profile (green = more conservative, red = more aggressive):"
+msgstr "Valori di fabbrica → profilo (verde = più conservativo, rosso = più spinto):"
+
+msgid "Stock values; automatic start disabled"
+msgstr "Valori di fabbrica; avvio automatico disattivato"
+
+msgid "Stock → final CO"
+msgstr "CO fabbrica → definitivo"
+
+msgid "Stop"
+msgstr "Interrompi"
+
+msgid "Stop asking for the password"
+msgstr "Non chiedere più la password"
+
+msgid "Stop asking for the password?"
+msgstr "Non chiedere più la password?"
+
+msgid "Stopping…"
+msgstr "Interrompo…"
+
+msgid "TDC"
+msgstr "TDC"
+
+msgid "Telemetry: "
+msgstr "Telemetria: "
+
+msgid "Temperature at which the CPU slows down to stay within the limit"
+msgstr "Temperatura a cui la CPU rallenta per restare entro il limite"
+
+msgid "Test all cores together (fast, recommended)"
+msgstr "Test di tutti i core insieme (veloce, consigliato)"
+
+#, python-format
+msgid "Test load: %s — the one that draws the most power on this CPU"
+msgstr "Carico di prova: %s — quello che consuma di più su questa CPU"
+
+msgid "Testing"
+msgstr "In prova"
+
+#, python-format
+msgid "The '%s' profile was deactivated after a crash (%s)"
+msgstr "Il profilo '%s' è stato disattivato dopo un crash (%s)"
+
+msgid "The Super I/O chip (nct67xx) is not visible in hwmon. \"Enable\" loads the nct6775 module and makes it permanent; if the chip does not show up because of an ACPI conflict, it adds the kernel parameter acpi_enforce_resources=lax and asks for a reboot."
+msgstr "Il chip Super I/O (nct67xx) non è visibile in hwmon. \"Abilita\" carica il modulo nct6775 e lo rende permanente; se il chip non compare per un conflitto ACPI, aggiunge il parametro kernel acpi_enforce_resources=lax e chiede il riavvio."
+
+msgid "The chip's SmartFan interpolates between the points; below the first it holds its %, above the last 100 %"
+msgstr "La SmartFan del chip interpola fra i punti; sotto il primo tiene la sua %, oltre l'ultimo il 100 %"
+
+msgid "The current profile is replaced by these values (green = more conservative, red = more aggressive):"
+msgstr "Il profilo attuale viene sostituito da questi valori (verde = più conservativo, rosso = più spinto):"
+
+msgid "The fans stay managed by the BIOS SmartFan: here you only change the rise/fall times and the curve points of the channels recognised as fans. Pumps and non-controllable channels are protected."
+msgstr "Le ventole restano gestite dalla SmartFan del BIOS: qui si cambiano solo i tempi di salita/discesa e i punti curva dei canali riconosciuti come ventola. Pompe e canali non controllabili sono protetti."
+
+#, python-format
+msgid "The final margin is +%d because %s"
+msgstr "Il margine finale è +%d perché %s"
+
+#, python-format
+msgid "The previous boot ended with a crash while the '%s' profile was active (%s). Reactivate it (also at startup) or stay on the stock values?"
+msgstr "Il boot precedente è terminato con un crash mentre era attivo il profilo '%s' (%s). Riattivarlo (anche all'avvio) o restare sui valori di fabbrica?"
+
+msgid "The step interrupted by the reboot has already been recorded as unstable."
+msgstr "Il passo interrotto dal riavvio è già stato registrato come instabile."
+
+#, python-format
+msgid "The system locked up %s."
+msgstr "Il sistema si è bloccato %s."
+
+#, python-format
+msgid "The system locked up %s: that level is recorded as unstable and the calibration restarts from the final pass at CO %s (margin +%d)."
+msgstr "Il sistema si è bloccato %s: quel livello è registrato come instabile e si riparte dalla passata finale a CO %s (margine +%d)."
+
+msgid "The system rebooted during a test: that step has been marked unstable. If the final CO was already applied, the combination is unstable and the final pass is repeated with +3 on every core."
+msgstr "Il sistema si è riavviato durante un test: quel passo è stato marcato instabile. Se il CO finale era già applicato, la combinazione è instabile e la passata finale viene ripetuta con +3 su tutti i core."
+
+msgid "The test load did not reach the configured power limit: the knee holds for loads of this intensity"
+msgstr "Il carico di prova non ha raggiunto il limite di potenza impostato: il ginocchio vale per carichi di questa intensità"
+
+msgid "Time between one PWM step and the next when the temperature falls"
+msgstr "Tempo fra un passo PWM e il successivo quando la temperatura scende"
+
+msgid "Time between one PWM step and the next when the temperature rises: high = the fan ignores short peaks"
+msgstr "Tempo fra un passo PWM e il successivo quando la temperatura sale: alto = la ventola ignora i picchi brevi"
+
+msgid "Tjmax"
+msgstr "Tjmax"
+
+#, python-format
+msgid "Undervolt validated by the final pass of %s, reused without load tests. %s"
+msgstr "Undervolt validato dalla passata finale del %s, riusato senza test di carico. %s"
+
+#, python-format
+msgid "Unknown channels (%d)"
+msgstr "Canali sconosciuti (%d)"
+
+msgid "Unlock"
+msgstr "Sblocca"
+
+msgid "Unstable at"
+msgstr "Instabile a"
+
+msgid "Values set by hand in the CPU, Curves and Fans pages"
+msgstr "Valori impostati a mano nelle pagine CPU, Curve e Ventole"
+
+msgid "Writes and reads back one value per command, then restores the baseline"
+msgstr "Scrive e rilegge un valore per comando, poi ripristina la baseline"
+
+#, python-format
+msgid "Writes the %s profile without activating it: apply it from the Modes page"
+msgstr "Scrive il profilo %s senza attivarlo: si applica dalla pagina Modalità"
+
+#, python-format
+msgid "Writes the %s profile, applies it right away and selects it"
+msgstr "Scrive il profilo %s, lo applica subito e lo seleziona"
+
+#, python-format
+msgid "all cores together, %s — %sCO (Curve Optimizer) down to %d with margin %d, %d s per test."
+msgstr "tutti i core insieme, %s — %sCO (Curve Optimizer) fino a %d con margine %d, %d s per test."
+
+#, python-format
+msgid "at %d: "
+msgstr "a %d: "
+
+#, python-format
+msgid "at CO %s"
+msgstr "a CO %s"
+
+msgid "auto"
+msgstr "auto"
+
+msgid "benchmark"
+msgstr "benchmark"
+
+msgid "calibrated"
+msgstr "calibrata"
+
+#, python-format
+msgid "cap %d %%"
+msgstr "tetto %d %%"
+
+#, python-format
+msgid "channel %s: %s (%s)"
+msgstr "canale %s: %s (%s)"
+
+#, python-format
+msgid "core %d: stock %s"
+msgstr "core %d: fabbrica %s"
+
+msgid "crash"
+msgstr "crash"
+
+msgid "empty profile"
+msgstr "profilo vuoto"
+
+msgid "fall"
+msgstr "discesa"
+
+msgid "fan"
+msgstr "ventola"
+
+msgid "fan status not available"
+msgstr "stato ventole non disponibile"
+
+msgid "final pass"
+msgstr "passata finale"
+
+#, python-format
+msgid "fixed %d %%"
+msgstr "fissa %d %%"
+
+msgid "full search"
+msgstr "ricerca completa"
+
+#, python-format
+msgid "in the final pass at CO %s"
+msgstr "nella passata finale a CO %s"
+
+msgid "limit "
+msgstr "limite "
+
+msgid "measured limit + mode margin + 3 for every failed final pass"
+msgstr "limite misurato + margine della modalità + 3 per ogni passata finale fallita"
+
+msgid "n/a"
+msgstr "n/d"
+
+msgid "name: a-z 0-9 _ - (max 32)"
+msgstr "nome: a-z 0-9 _ - (max 32)"
+
+msgid "no usable previous measurement"
+msgstr "nessuna misura precedente utilizzabile"
+
+msgid "not controllable"
+msgstr "non controllabile"
+
+msgid "now"
+msgstr "adesso"
+
+msgid "preset"
+msgstr "preset"
+
+msgid "pump"
+msgstr "pompa"
+
+#, python-format
+msgid "reuses the undervolt validated by the final pass of %s, without load tests: the profile is proposed right away."
+msgstr "riusa l'undervolt validato dalla passata finale del %s, senza test di carico: il profilo viene proposto subito."
+
+msgid "rise"
+msgstr "salita"
+
+msgid "role not detected: use \"Detect roles\" (name: Enter to save)"
+msgstr "ruolo non rilevato: usa \"Rileva ruoli\" (nome: Invio per salvare)"
+
+msgid "rpm: use Identify"
+msgstr "giri: usa Identifica"
+
+msgid "ryzenctl serve is not responding (pkexec denied or process terminated): restart the application"
+msgstr "ryzenctl serve non risponde (pkexec negato o processo terminato): riavvia l'applicazione"
+
+msgid "simulated"
+msgstr "simulato"
+
+msgid "stock "
+msgstr "fabbrica "
+
+msgid "stock: "
+msgstr "fabbrica: "
+
+msgid "system power profile (power-profiles-daemon / EPP)"
+msgstr "profilo energetico di sistema (power-profiles-daemon / EPP)"
+
+#, python-format
+msgid "target Tctl %d °C, "
+msgstr "Tctl obiettivo %d °C, "
+
+#, python-format
+msgid "the combined pass failed %d times"
+msgstr "la passata combinata è fallita %d volte"
+
+msgid "the combined pass failed once"
+msgstr "la passata combinata è fallita 1 volta"
+
+msgid "the search ended with a system lockup (+3)"
+msgstr "la ricerca si è chiusa con un blocco del sistema (+3)"
+
+msgid "unknown"
+msgstr "sconosciuto"
+
+msgid "unknown error"
+msgstr "errore sconosciuto"
+
+msgid "unstable"
+msgstr "instabile"
+
+#, python-format
+msgid "~%d min"
+msgstr "~%d min"
+
+msgid "− point"
+msgstr "− punto"
+
+#, python-format
+msgid "≈ %d rpm"
+msgstr "≈ %d giri"
+
+msgid "BIOS: fans untouched"
+msgstr "BIOS: ventole invariate"
+
+msgid "Moderate: rise 3 s, fall 2 s, BIOS curve +10 % with 100 % at 100 °C"
+msgstr "Moderate: salita 3 s, discesa 2 s, curva del BIOS +10 % con 100 % a 100 °C"
+
+msgid "Quiet: rise 10 s, fall 5 s, minimum up to target Tctl −10 °C, 100 % at Tjmax −5 °C"
+msgstr "Silenziose: salita 10 s, discesa 5 s, minimo fino a Tctl obiettivo −10 °C, 100 % a Tjmax −5 °C"
+
+msgid "Also in automatic mode: how much the mode touches the fans (only the channels recognised as fans)"
+msgstr "Anche in automatico: quanto la modalità tocca le ventole (solo i canali riconosciuti come ventola)"
+
+msgid "Curve Optimizer not available on this CPU: %s"
+msgstr "Curve Optimizer non disponibile su questa CPU: %s"
+
+#, python-format
+msgid "%s · %d cores"
+msgstr "%s · %d core"
+
+msgid "Family not verified on hardware yet: run the Hardware check in Preferences"
+msgstr "Famiglia non ancora verificata sull'hardware: esegui la Verifica hardware nelle Preferenze"
+
+#, python-format
+msgid "One thread alone on each core, from idle to the highest boost: catches the CO instability that all-core loads miss. A core that fails is raised alone. Adds %s"
+msgstr "Un solo thread su ogni core, da inattivo al boost massimo: scopre l'instabilità del CO che i carichi su tutti i core non vedono. Un core che fallisce viene alzato da solo. Aggiunge %s"
+
+msgid "Single-core test in the final pass"
+msgstr "Test single-core nella passata finale"
+
+#, python-format
+msgid "in the single-core test of core %d at CO %d"
+msgstr "nel test single-core del core %d a CO %d"
+
+#, python-format
+msgid "Final pass, single-core test: core %d alone at CO %d (%d of %d)…"
+msgstr "Passata finale, test single-core: core %d da solo a CO %d (%d di %d)…"
+
+#, python-format
+msgid "Core %d failed alone at CO %d (%s): +3 on that core only and a new final pass"
+msgstr "Il core %d è fallito da solo a CO %d (%s): +3 solo su quel core e una nuova passata finale"
+
+#, python-format
+msgid "Raised alone after failing the single-core test: %s"
+msgstr "Alzati da soli dopo aver fallito il test single-core: %s"
+
+#, python-format
+msgid "core %s +%d"
+msgstr "core %s +%d"
+
+#, python-format
+msgid ", single-core test of core %s"
+msgstr ", test single-core del core %s"
+
+msgid "During a calibration or a verification the motherboard watchdog is handed to systemd: if the PC freezes, it restarts by itself after the timeout and the run resumes from where it was, with that step recorded as unstable. If only Ryzen Control closes or crashes, nothing restarts: the step counts as a crash when it opens again."
+msgstr "Durante una calibrazione o una verifica il watchdog della scheda madre viene affidato a systemd: se il PC si blocca, si riavvia da solo allo scadere del tempo e la prova riprende da dov'era, con quel passo registrato come instabile. Se si chiude o va in crash solo Ryzen Control, non si riavvia nulla: alla riapertura il passo conta come crash."
+
+#, python-format
+msgid "Hardware watchdog: %s"
+msgstr "Watchdog hardware: %s"
+
+msgid "The saved profile is applied, then every core is tested alone (one thread, from idle to the highest boost) and then all cores together, over and over until the time is up; CO and limits are never changed during the run. A core that fails is reported and the proposal raises only that core (+3, less negative). An unstable CO can reboot the PC without warning: save everything before starting. At the end the CPU goes back to the stock values."
+msgstr "Il profilo salvato viene applicato, poi ogni core viene provato da solo (un thread, da inattivo al boost massimo) e poi tutti i core insieme, a ripetizione fino allo scadere del tempo; CO e limiti non vengono mai cambiati durante la prova. Un core che fallisce viene segnalato e la proposta alza solo quel core (+3, meno negativo). Un CO instabile può riavviare il PC all'improvviso: salva tutto prima di iniziare. Al termine la CPU torna ai valori di fabbrica."
+
+msgid "30 min"
+msgstr "30 min"
+
+msgid "1 h"
+msgstr "1 h"
+
+msgid "3 h"
+msgstr "3 h"
+
+msgid "8 h"
+msgstr "8 h"
+
+msgid "verification"
+msgstr "verifica"
+
+#, python-format
+msgid "%s verification"
+msgstr "Verifica %s"
+
+msgid "The system rebooted during the test of a core: that core is recorded as failed (crash) and no longer tested; after a reboot the profile is applied again."
+msgstr "Il sistema si è riavviato durante la prova di un core: quel core è registrato come fallito (crash) e non viene più provato; dopo un riavvio il profilo viene applicato di nuovo."
+
+#, python-format
+msgid "Verifying core %d alone at CO %d (iteration %d of %d)…"
+msgstr "Verifica del core %d da solo a CO %d (iterazione %d di %d)…"
+
+#, python-format
+msgid "Verifying all cores together (iteration %d of %d)…"
+msgstr "Verifica di tutti i core insieme (iterazione %d di %d)…"
+
+#, python-format
+msgid "Failed: %s. The proposal raises only those cores by +3 (less negative)."
+msgstr "Falliti: %s. La proposta alza solo quei core di +3 (meno negativo)."
+
+#, python-format
+msgid "core %s at CO %d (%s)"
+msgstr "core %s a CO %d (%s)"
+
+#, python-format
+msgid "No core failed (iterations completed: %d of %d; every core alone, then all together)."
+msgstr "Nessun core è fallito (iterazioni completate: %d di %d; ogni core da solo, poi tutti insieme)."
+
+#, python-format
+msgid "%s profile: stock → proposed"
+msgstr "Profilo %s: fabbrica → proposto"
+
+msgid "Verification complete: discard the proposal, save it, or save and apply?"
+msgstr "Verifica completata: annullare la proposta, salvarla o salvarla e applicarla?"
+
+msgid "Verification passed: nothing to change"
+msgstr "Verifica superata: niente da cambiare"
+
+msgid "Apply the profile"
+msgstr "Applica il profilo"
+
+msgid "Ends the verification now: result and proposal from the tests done so far"
+msgstr "Termina subito la verifica: risultato e proposta dalle prove fatte finora"
+
+msgid "Verification discarded, CPU at baseline"
+msgstr "Verifica annullata, CPU a baseline"
+
+msgid "Verify…: long stability test of the saved profile (each core alone, then all together)"
+msgstr "Verifica…: lunga prova di stabilità del profilo salvato (ogni core da solo, poi tutti insieme)"
+
+msgid "Duration"
+msgstr "Durata"
+
+#, python-format
+msgid "Verify the %s profile?"
+msgstr "Verificare il profilo %s?"
+
+msgid "none"
+msgstr "nessuno"
+
+msgid "Verification interrupted"
+msgstr "Verifica interrotta"
+
+#, python-format
+msgid "The verification of the %s profile started on %s was left halfway (iteration %d of %d). Failed so far: %s. A core that locked up the system is recorded as failed and no longer tested. Continue the verification, see the result now, or discard it and stay on the stock values?"
+msgstr "La verifica del profilo %s iniziata il %s è rimasta a metà (iterazione %d di %d). Falliti finora: %s. Un core che ha bloccato il sistema è registrato come fallito e non viene più provato. Continuare la verifica, vedere subito il risultato o annullarla restando ai valori di fabbrica?"
+
+msgid "Show the result"
+msgstr "Mostra il risultato"
+
+msgid "Continue verification"
+msgstr "Continua la verifica"
+
+msgid "Verification stopped early: no core failed in the tests done"
+msgstr "Verifica fermata prima del termine: nessun core è fallito nelle prove fatte"
+
+msgid "'%s' exists: it is replaced when you save the result"
+msgstr "'%s' esiste: viene sostituito quando salvi il risultato"
+
+msgid "; it is the active mode: the stock values are applied"
+msgstr "; è la modalità attiva: vengono applicati i valori di fabbrica"
+
+msgid "Boost as a base needs \"Allow beyond the stock values\" (Preferences)."
+msgstr "Boost come base richiede «Consenti oltre i valori di fabbrica» (Preferenze)."
+
+msgid "Calibrations from Eco, Auto or Boost with your parameters, each saved as a new profile: the three modes stay as they are"
+msgstr "Calibrazioni da Eco, Auto o Boost con i tuoi parametri, ognuna salvata come nuovo profilo: le tre modalità restano come sono"
+
+msgid "Continue…"
+msgstr "Continua…"
+
+msgid "Custom calibration"
+msgstr "Calibrazione personalizzata"
+
+msgid "Custom calibration '%s' deleted"
+msgstr "Calibrazione personalizzata '%s' eliminata"
+
+msgid "Custom calibration from %s → %s"
+msgstr "Calibrazione personalizzata da %s → %s"
+
+msgid "Delete"
+msgstr "Elimina"
+
+msgid "Delete '%s'?"
+msgstr "Eliminare '%s'?"
+
+msgid "Delete this custom calibration"
+msgstr "Elimina questa calibrazione personalizzata"
+
+msgid "Name of the new profile"
+msgstr "Nome del nuovo profilo"
+
+msgid "Only a-z 0-9 - _, and not the name of a mode"
+msgstr "Solo a-z 0-9 - _, e non il nome di una modalità"
+
+msgid "Pick the base mode and the name of the new profile, then the usual parameters"
+msgstr "Scegli la modalità di partenza e il nome del nuovo profilo, poi i soliti parametri"
+
+msgid "Starting from"
+msgstr "Partendo da"
+
+msgid "The profile of this custom calibration is deleted"
+msgstr "Il profilo di questa calibrazione personalizzata viene eliminato"
+
+msgid "The result is saved as a new profile: Eco, Auto and Boost stay as they are, and a new search of the CO limit does not replace their measurement."
+msgstr "Il risultato viene salvato come nuovo profilo: Eco, Auto e Boost restano come sono, e una nuova ricerca del limite del CO non sostituisce la loro misura."
+
+msgid "from %s, %s"
+msgstr "da %s, %s"
+
+msgid "Retry from the last stable value, ignoring the crash"
+msgstr "Riprova dall'ultimo valore stabile, ignorando il crash"
+
+msgid "The crash of the measurement is ignored: the final pass starts again from the last stable value + margin."
+msgstr "Il crash della misura viene ignorato: il passaggio finale riparte dall'ultimo valore stabile + margine."
+
+msgid "When the reused measurement ended with a crash (or a final pass failed), the final pass normally starts 3 steps further away and skips what failed. On: from the last stable value + margin again; a freeze is possible (the watchdog resets the PC, the crash is recorded)."
+msgstr "Quando la misura riusata è finita con un crash (o un passaggio finale è fallito), di norma il passaggio finale parte 3 passi più lontano e salta ciò che è fallito. Attivo: riparte dall'ultimo valore stabile + margine; un blocco è possibile (il watchdog riavvia il PC, il crash viene registrato)."
+
+msgid "The lockup of the measurement at CO %s is ignored, as you chose: the final pass starts from the last stable value + margin, at CO %s."
+msgstr "Il blocco della misura a CO %s viene ignorato, come hai scelto: il passaggio finale parte dall'ultimo valore stabile + margine, a CO %s."
+
+msgid " (applied at startup)"
+msgstr " (applicata all'avvio)"
+
+msgid " (needs unlock)"
+msgstr " (richiede lo sblocco)"
+
+msgid " (not calibrated)"
+msgstr " (non calibrata)"
+
+msgid "Custom: %s"
+msgstr "Personalizzato: %s"
+
+msgid "Icon in the system tray"
+msgstr "Icona nel vassoio di sistema"
+
+msgid "Mode: %s"
+msgstr "Modalità: %s"
+
+msgid "Modes and Apply at startup from the tray; closing the window keeps the icon. KDE Plasma; on GNOME it needs the AppIndicator extension"
+msgstr "Modalità e Applica all'avvio dal vassoio; chiudendo la finestra l'icona resta. KDE Plasma; su GNOME serve l'estensione AppIndicator"
+
+msgid "Open Ryzen Control"
+msgstr "Apri Ryzen Control"
+
+msgid "Profile '%s' deactivated after a crash (%s)"
+msgstr "Profilo '%s' disattivato dopo un crash (%s)"
+
+msgid "Profile deactivated after a crash: choose in the menu"
+msgstr "Profilo disattivato dopo un crash: scegli nel menu"
+
+msgid "Quit"
+msgstr "Esci"
+
+msgid "Start minimized to the tray icon"
+msgstr "Avvia ridotto a icona"
+
+msgid "At login only the icon starts, no password until you use it; off: the window opens too"
+msgstr "Al login parte solo l'icona, nessuna password finché non la usi; spento: si apre anche la finestra"
+
+msgid "APU: power allowed for short bursts (seconds); lower = shorter and cooler peaks"
+msgstr "APU: potenza concessa per brevi picchi (secondi); più bassa = picchi più brevi e più freschi"
+
+msgid "APU: sustained power (tens of seconds); lower = less heat and fan noise under long loads"
+msgstr "APU: potenza sostenuta (decine di secondi); più bassa = meno calore e rumore delle ventole sotto carichi lunghi"
+
+msgid "Fast PPT"
+msgstr "PPT fast"
+
+msgid "Slow PPT"
+msgstr "PPT slow"
+
+msgid "On battery: the firmware's power limits apply until AC power is back"
+msgstr "A batteria: valgono i limiti di potenza del firmware finché non torna l'alimentatore"
+
+msgid "On AC power: the firmware's power limits apply until back on battery or a restart"
+msgstr "Con l'alimentatore: valgono i limiti di potenza del firmware finché non si torna a batteria o fino al riavvio"
+
+#, python-format
+msgid "The firmware keeps overriding the power limits: re-applying stopped (%s); apply the mode again to retry"
+msgstr "Il firmware continua a sovrascrivere i limiti di potenza: riapplicazione interrotta (%s); applica di nuovo la modalità per riprovare"
+
+#, python-format
+msgid "Profile deselected; CPU values not written: %s"
+msgstr "Profilo deselezionato; valori della CPU non scritti: %s"

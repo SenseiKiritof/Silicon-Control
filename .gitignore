@@ -1,0 +1,47 @@
+# Editor / IDE
+.idea/
+.vscode/
+*~
+*.swp
+.claude/settings.local.json
+.claude/worktrees/
+.mcp.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Driver (ryzen_smu/, build out-of-tree)
+*.o
+*.ko
+*.ko.*
+*.mod
+*.mod.c
+.*.cmd
+Module.symvers
+modules.order
+.tmp_versions/
+
+# Packages
+build/
+dist/
+*.tar.gz
+*.tar.xz
+*.rpm
+*.deb
+*.changes
+*.buildinfo
+*.pkg.tar.*
+pkg/
+src/
+packaging/debian/.debhelper/
+packaging/debian/debhelper-build-stamp
+packaging/debian/files
+packaging/debian/*.substvars
+packaging/debian/*.debhelper.log
+packaging/debian/tmp/
+packaging/debian/ryzen-control/
+packaging/debian/ryzen-smu-dkms/
+
+# packaging/debian copied to the root to build on Debian/Ubuntu itself
+/debian/

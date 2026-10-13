@@ -1,0 +1,4 @@
+# ryzenctl-resume.service re-applies the profile after a suspend or hibernation: the sleep targets on purpose
+ryzen-control: systemd-service-file-refers-to-unusual-wantedby-target *
+# usage in the README and in `ryzenctl` without arguments; no man pages yet
+ryzen-control: no-manual-page *

@@ -1,0 +1,12 @@
+[Unit]
+Description=Ryzen Control: every 10 s, the laptop firmware's changes to the profile's power limits are undone
+
+[Timer]
+OnBootSec=1min
+# From the last run, or the last trigger when the service was skipped (no flag): it keeps firing; the check of the
+# flag is all it costs on a desktop.
+OnUnitActiveSec=10s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
