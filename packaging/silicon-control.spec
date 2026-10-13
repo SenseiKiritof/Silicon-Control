@@ -107,7 +107,7 @@ dkms remove -m ryzen_smu -v %{drv_version} -q --all --rpm_safe_upgrade || :
 
 %files -f siliconctl.lang -f silicon-control.lang
 %license LICENSE ryzen_smu/LICENSE
-%doc README.md ryzen_smu/UPSTREAM.md
+%doc README.md docs/TECHNICAL.md ryzen_smu/UPSTREAM.md
 %{_bindir}/siliconctl
 %{_bindir}/silicon-control
 %{_datadir}/applications/io.github.senseikiritof.SiliconControl.desktop

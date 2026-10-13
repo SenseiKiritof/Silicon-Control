@@ -109,6 +109,9 @@ them are Ryzen Control's, not this plan's.
 - `ryzen_smu/` — upstream driver (amkillam/ryzen_smu, commit d298366) **copied**, not a subtree
   (git-subtree is not installed): origin, excluded files, local change to `smu.c` (PM table
   0x6211xx/0x6212xx) and update procedure in `ryzen_smu/UPSTREAM.md`.
+- `README.md` is for users (features, processors in brief, install from the release packages, usage, safety in
+  brief); `docs/TECHNICAL.md` has the rest (components, every family, the CLI, the calibration, the safety rules, the
+  hardware checklist, building, development). A user-visible change updates both where they cover it.
 - `Makefile` — the only source of the installed layout (`install` = `install-cli` + `install-gui`
   if present + `install-dkms-src`; `DESTDIR`, `PREFIX`; `APPID` is only used for the file names in
   `data/`, the id `io.github.senseikiritof.SiliconControl` is written inside the files). Every package is
@@ -158,7 +161,7 @@ Translations: no GNU gettext tools here (`xgettext`, `msgmerge`): a new `_()` st
 fuzzy or keeps an unused entry, and on a `_()` of a non-literal.
 
 On hardware (the user runs them, with `! command`; commit after their result): checklist in
-README "Hardware verification".
+`docs/TECHNICAL.md` "Hardware verification".
 
 Not on this machine: `dpkg-buildpackage`, `lintian`, `namcap` (run in containers: `make deb`, `make arch`),
 `stress-ng`. `make check` needs `python3-pyflakes` (a development tool, never a runtime dependency). The deb/Arch packages are container-tested only: the README says so.

@@ -32,6 +32,9 @@ Revision 7 (2026-10-13): phase 4 designed with the user: the in-app CPU check an
 unverified or unknown CPUs can add them from real reports (prefilled GitHub issue, a PM table dump only with explicit
 consent, a local record of a successful hwtest, a notice in the Monitor).
 
+Revision 8 (2026-10-13): phase 4, step 12 at the user's request ("dividere il README tecnico dal README classico"):
+`README.md` for users, the technical details in `docs/TECHNICAL.md`.
+
 ## Context
 
 Ryzen Control (`../Ryzen Control`, v0.8.0, public on GitHub) is a Ryzen Master-style tool for Linux: a root
@@ -323,6 +326,7 @@ the machine verified locally; the Monitor proposes the check (a notice that can 
 | 9 | `feat(gui): the CPU check and report` — the Monitor notice (backend generic or not verified, not checked, hidden per CPU id in `ui.json`), one flow for the notice and Preferences: confirm (+ PM consent when offered) → hwtest → report → dialog with Copy, Save (`Gtk.FileDialog`), Open issue (`Gtk.UriLauncher`, body cut at ~6000 characters, the full report on the clipboard) | GUI smoke on granite, codename 25, intel-laptop, generic |
 | 10 | `docs: processors by vendor, the owners' procedure, the issue template` — README by vendor, "Adding your processor" through the in-app check, `.github/ISSUE_TEMPLATE/cpu-report.md` | `make check` |
 | 11 | release 0.4.0; the user creates `SenseiKiritof/Silicon-Control` and pushes | the user's check on the 9800X3D (report, record, flow), the issue link once the repository exists |
+| 12 | `docs: the README for users, the technical details in docs/TECHNICAL.md` — README: features, processors in brief, install from the release packages, usage, safety in brief; TECHNICAL: components, every family, the CLI, the calibration, the safety rules, the hardware checklist, building, development (revision 8) | every line of the old README in one of the two or deliberately rewritten; links; `make check` |
 
 ## Notes for the first session
 
