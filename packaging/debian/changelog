@@ -1,3 +1,13 @@
+silicon-control (0.3.0) unstable; urgency=medium
+
+  * Intel backend (expected: tested on simulated hardware only): PL1/PL2
+    through powercap, the temperature limit through the TCC offset, turbo
+    through intel_pstate; warnings for thermald and for an old Raptor Lake
+    microcode. No undervolt on Intel (set it in the BIOS).
+  * The stock value is always within the GUI's ranges.
+
+ -- senseikiritof <tonifede98@gmail.com>  Tue, 13 Oct 2026 20:29:32 +0200
+
 silicon-control (0.2.0) unstable; urgency=medium
 
   * Generic backend where the AMD one does not apply (Intel, ARM, the AMD

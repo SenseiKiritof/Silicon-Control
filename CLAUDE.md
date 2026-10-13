@@ -29,8 +29,10 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   generic, no Intel hardware, Italian protocol keys kept).
 - Phase 0 done: the rename (step 1) and the takeover of Ryzen Control (step 2), installed by the user over Ryzen
   Control 0.8.0 on the 9800X3D. Phase 1 (phases 1 and 2 merged, plan revision 4): the generic backend (step 3,
-  verified with `siliconctl.generic` on the 9800X3D) and the GUI from the capabilities (step 4) done; release 0.2.0
-  pending. Next: phase 3, Intel (research first).
+  verified with `siliconctl.generic` on the 9800X3D) and the GUI from the capabilities (step 4) done, released as
+  v0.2.0 (local tag, installed on the 9800X3D). Phase 3 (Intel): research done (plan revision 5); step 6 (power
+  limits, TCC offset, turbo) on fakes only; step 7 (the Intel undervolt) stopped, not implemented (plan revision 6):
+  never write an OC-mailbox module. Next: closing phase 3 (the AMD regression on the 9800X3D, release 0.3.0).
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
@@ -214,6 +216,17 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
   table read on it (`selftest_generic`). The GUI builds from what the CPU reports: tiles from `status.caps`, per-core
   columns only with values, no Curves page without a usable CO, "Temperature"/"Power" and the reason on the generic
   backend (`telemetry.backend` for the tray); `make check` also runs the smoke on the generic fake.
+- **Intel backend** (phase 3, step 6): `INTEL` = GENERIC plus the kernel's Intel knobs, chosen by `family()` for
+  `GenuineIntel` (`cpuinfo()`, cached per process). `pl1`/`pl2` (`pl_setter`): powercap constraints matched by name in
+  `RAPL_ZONES` (MSR and its MMIO mirror), the same value written to both (`pl_set` puts the zones already written
+  back when one refuses), effective = the lower, usable only where `enabled` reads 1; floor `pl_floor` (INTEL_PL_MIN,
+  half the reference PL1, PPCC min), ceiling the baseline or with unlock `max_power_uw`, never on `RAPTOR_DESKTOP`.
+  `tjmax` (`cmd_tjmax`, AMD's in `AMD_TJMAX`): the TCC offset (`tcc_file`: int340x attribute or the "TCC Offset"
+  cooling device, kernel ≥ 5.14), TjMax from coretemp. `boost` through `NO_TURBO` (inverted), never on when the
+  baseline had it off. `limits_now()` gives `reapply` and `status` the Intel limits; `intel_warnings()` (thermald,
+  Raptor Lake microcode) in `status.warnings`, in every PL/TCC write and in the GUI. Kernel errors through
+  `sysfs_write` (ENODATA = PL locked by the BIOS). Fake variants `intel`, `intel-raptor`, `intel-laptop`;
+  `selftest_intel` fails on any SMU command. Never a raw MSR write, PL4, time windows, `enabled` or psys.
 - **Modes** are static (no daemon, the dynamic behaviour is done by PBO): Default / Quiet (preset) /
   Eco (calibrated) / Auto (calibrated) / Performance (preset) / Boost (calibrated) / Custom.
   The three calibrated modes share one CO measurement and one margin (+3): Auto adds the

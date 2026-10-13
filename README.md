@@ -20,7 +20,8 @@ Status: the code of Ryzen Control 0.8.0 under the new name — `siliconctl` help
 driver via DKMS, RPM package, fans, GTK4 GUI, calibrations, per-family support for other Ryzen
 CPUs, system tray icon on the development system; deb and Arch packages built and install-tested in
 containers; APUs and laptops tested on simulated hardware only (see `docs/plans/`). Since 0.2.0 the generic
-backend serves every other CPU (verified on the 9800X3D with `siliconctl.generic`).
+backend serves every other CPU (verified on the 9800X3D with `siliconctl.generic`); since 0.3.0 the Intel backend
+(power limits, temperature limit, turbo; simulated hardware only).
 
 ![Modes page: presets on the left, calibrated modes on the right](docs/screenshots/modes.png)
 
@@ -45,7 +46,8 @@ has written and read back each of its functions; until then it is **expected**: 
 | Raven Ridge, Picasso, Dali, Van Gogh (Steam Deck), Krackan… | | generic backend | no readable PM table through ryzen_smu, or an unmapped one: the SMU is not used |
 | HX laptops: 7945HX, 9955HX … | Dragon Range, Fire Range (reported by the driver as Raphael / Granite Ridge) | generic backend | when the machine has a system battery (a laptop): its firmware and battery limits are not handled, the SMU is not used |
 | Threadripper, EPYC | — | generic backend | other interface (HSMP), out of scope: the SMU is not used |
-| Every other CPU: Intel, ARM, … | — | generic backend, expected | see [Generic backend](#generic-backend); Intel's power limits, temperature limit and undervolt are planned |
+| Intel Core, desktops and laptops (Haswell … Arrow Lake, Core Ultra) | — | Intel backend, expected | PL1/PL2, temperature limit (TCC offset), turbo, FMax: see [Intel backend](#intel-backend); no undervolt (set it in the BIOS) |
+| Every other CPU: ARM, … | — | generic backend, expected | see [Generic backend](#generic-backend) |
 
 Fans depend on the motherboard (Nuvoton nct67xx chip), not on the processor.
 
@@ -83,6 +85,25 @@ To try it on an AMD CPU that the AMD backend supports, add `siliconctl.generic` 
 GRUB, press `e`): that boot runs the generic backend from the start. If the backend changes within a boot (the
 `ryzen_smu` module loaded by hand after a boot without it), CPU writes are refused until the next boot: the baseline
 of the other backend is no ceiling for this one.
+
+### Intel backend
+
+On Intel CPUs (no Intel hardware was available to develop it: every model is *expected* until an owner runs
+`hwtest`) Silicon Control uses the kernel's own interfaces, which work with Secure Boot:
+
+- **PL1/PL2** (`pl1`, `pl2`, in W) through powercap, written with the same value to the MSR zone and to its MMIO
+  mirror where it exists (the CPU applies the lower) and read back; never below 5 W, half of the stock PL1 or the
+  laptop maker's minimum; never above the stock values, or with `unlock on` above them up to the kernel's maximum
+  (TDP / maximum power), never on Raptor Lake desktop (13th/14th gen S), where `status` also warns when the microcode
+  lacks Intel's instability fixes. A limit locked by the BIOS is not offered. Desktop boards with "unlimited" limits
+  keep them: the presets then start from the kernel's TDP.
+- **Temperature limit** (`tjmax`) through the TCC offset (kernel 5.14 or newer): only ever lowered.
+- **Turbo** (`boost`) through `intel_pstate/no_turbo`, never turned on when the BIOS turned it off; **FMax**, the
+  power profile, the fans, the temperature and the package power as on the [generic backend](#generic-backend).
+- **thermald** (common on laptops) may rewrite the power and temperature limits: `status`, every write and the GUI
+  warn while it runs. On a laptop the limits the firmware rewrites are written again, as for the AMD APUs.
+- Never a raw MSR write, never PL4, the time windows or the voltage: the undervolt is not done here, set it in the
+  BIOS where the board allows it.
 
 ### Laptops
 

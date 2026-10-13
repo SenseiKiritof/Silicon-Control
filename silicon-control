@@ -58,22 +58,25 @@ MODES = (("default", _("Default"), _("Stock values (baseline)")),
          ("auto", _("Auto"), _("Calibrated with load tests: undervolt (measured limit + margin 3), PPT and FMax at the performance/watt knee")),
          ("boost", _("Boost"), _("Calibrated with load tests, maximum power: aggressive undervolt (measured limit + margin 3), limits and FMax at the allowed ceilings, measured gain")),
          ("custom", _("Custom"), _("Values set by hand in the CPU, Curves and Fans pages")))
-CPU_PARAMS = (("ppt", _("PPT"), "W"), ("fast", _("Fast PPT"), "W"), ("slow", _("Slow PPT"), "W"), ("tdc", _("TDC"), "A"),
-              ("edc", _("EDC"), "A"), ("fmax", _("FMax"), "MHz"), ("tjmax", _("Tjmax"), "°C"))   # fast/slow: the APUs
+CPU_PARAMS = (("ppt", _("PPT"), "W"), ("pl1", "PL1", "W"), ("pl2", "PL2", "W"), ("fast", _("Fast PPT"), "W"),
+              ("slow", _("Slow PPT"), "W"), ("tdc", _("TDC"), "A"), ("edc", _("EDC"), "A"), ("fmax", _("FMax"), "MHz"),
+              ("tjmax", _("Tjmax"), "°C"))   # fast/slow: the AMD APUs; PL1/PL2: Intel
 PARAM_HELP = {"ppt": _("Maximum package power (Package Power Tracking): lower = less heat and power draw, less boost under full load"),
               "tdc": _("Maximum sustained current (Thermal Design Current) supplied by the VRMs"),
               "edc": _("Maximum peak current (Electrical Design Current) supplied by the VRMs"),
               "fast": _("APU: power allowed for short bursts (seconds); lower = shorter and cooler peaks"),
               "slow": _("APU: sustained power (tens of seconds); lower = less heat and fan noise under long loads"),
+              "pl1": _("Intel: long-term power limit (PL1), the package power sustained under a long load"),
+              "pl2": _("Intel: short-term power limit (PL2), the package power allowed for bursts of seconds"),
               "fmax": _("Maximum boost frequency: lowering it cuts the temperature peaks with little loss"),
               "tjmax": _("Temperature at which the CPU slows down to stay within the limit"),
               "co": None}   # filled below with CO_TIP
 CO_TIP = _("Curve Optimizer: per-core offset of the voltage/frequency curve. Negative = less voltage at the same frequency "
            "(less heat and power draw, higher boost); too negative = instability or reboot. Unit: steps of about 3–5 mV.")
 PARAM_HELP["co"] = CO_TIP
-CPU_HELP = _("PPT: maximum package power (on APUs fast/slow PPT: short-term and sustained power) · TDC/EDC: sustained/peak "
-             "current · FMax: maximum boost frequency · Tjmax: temperature at which the CPU slows down. Drag the slider or type "
-             "the number, then \"Apply now\".")
+CPU_HELP = _("PPT: maximum package power (on APUs fast/slow PPT: short-term and sustained power; on Intel PL1/PL2: long-term "
+             "and short-term power) · TDC/EDC: sustained/peak current · FMax: maximum boost frequency · Tjmax: temperature at "
+             "which the CPU slows down. Drag the slider or type the number, then \"Apply now\".")
 CO_HELP = (_("CO (Curve Optimizer): ") + CO_TIP.split(": ", 1)[-1] + _(" Drag the slider or type the number, then \"Apply now\". "
            "The Curve Shaper is experimental on this platform: set it from the BIOS."))
 UNLOCK_WARNING = _("PPT, TDC and EDC will be allowed beyond the stock values and FMax beyond the baseline "
@@ -771,6 +774,8 @@ class MonitorPage(Gtk.Box):
         self.append(top)
         self.why = label("", ["dim-label"], wrap=True, xalign=0.0, visible=False)   # why the generic backend
         self.append(self.why)
+        self.warn = label("", ["warning"], wrap=True, xalign=0.0, visible=False)   # thermald, Raptor Lake's microcode
+        self.append(self.warn)
         self.laptop = label("", ["warning"], wrap=True, visible=False)   # laptop_notes, from the telemetry
         self.append(self.laptop)
         tiles = Gtk.Box(spacing=12, homogeneous=True)
@@ -827,15 +832,17 @@ class MonitorPage(Gtk.Box):
     def refresh(self, st):   # the values live on `telemetry`; what this CPU reports decides the tiles and their names
         self.cpu.set_text(_("%s · %d cores") % (st.get("cpu", "?"), st.get("cores", 0)))
         self.unverified.set_visible(not st.get("verified", True))
-        generic = st.get("backend") == "generic"
+        generic, amd = st.get("backend") == "generic", st.get("backend", "amd") == "amd"
         self.why.set_text(_("Generic backend (kernel interfaces only): %s") % st.get("why_generic") if generic else "")
         self.why.set_visible(generic)
-        self.names = {"tctl": _("Temperature"), "ppt": _("Power")} if generic else {"tctl": "Tctl", "ppt": "PPT"}
+        self.warn.set_text("\n".join(st.get("warnings") or []))
+        self.warn.set_visible(bool(st.get("warnings")))
+        self.names = {"tctl": "Tctl", "ppt": "PPT"} if amd else {"tctl": _("Temperature"), "ppt": _("Power")}
         for key, name in self.names.items():
             self.titles[key].set_text(name)
         caps = st.get("caps")
         if caps:   # the power always on the generic backend (RAPL); limits and FMax where the baseline has them
-            self.cards["ppt"].set_visible(generic or "ppt" in caps or "fast" in caps)
+            self.cards["ppt"].set_visible(not amd or "ppt" in caps or "fast" in caps)
             self.cards["tdc"].set_visible("tdc" in caps)
             self.cards["fmax"].set_visible("fmax" in caps)
 
@@ -1886,18 +1893,22 @@ class CpuPage(Page):
         self.boost_row.append(label(_("Boost"), ["heading"], width_chars=9))
         self.boost = Gtk.Switch(valign=Gtk.Align.CENTER)
         self.boost_row.append(self.boost)
-        self.boost_row.append(label(_("Precision Boost (kernel switch): off keeps the clock at the base frequency, the frequency "
-                                      "lever of CPUs without FMax"), ["dim-label"], wrap=True))
+        self.boost_row.append(label(_("Boost (kernel switch: Precision Boost, Turbo Boost): off keeps the clock at the base "
+                                      "frequency, the frequency lever of CPUs without FMax"), ["dim-label"], wrap=True))
         self.body.append(self.boost_row)
         self.read_boost = None
         self.nocaps = label(_("Baseline of this boot missing: no CPU write possible (siliconctl.service did not capture it, see `siliconctl status`)."),
                             ["warning"], wrap=True, visible=False)
         self.body.append(self.nocaps)
+        self.warn = label("", ["warning"], wrap=True, visible=False)   # thermald rewriting the limits, Raptor Lake's microcode
+        self.body.append(self.warn)
         self.buttons()
 
     def refresh(self, st):
         caps = st.get("caps")
         self.nocaps.set_visible(not caps)
+        self.warn.set_text("\n".join(st.get("warnings") or []))
+        self.warn.set_visible(bool(st.get("warnings")))
         self.bar.set_sensitive(bool(caps))
         if not caps:
             return
@@ -2593,7 +2604,7 @@ class Tray:
             self.emit(self.MENU, "com.canonical.dbusmenu", "LayoutUpdated", GLib.Variant("(ui)", (self.rev, 0)))
         prof, (tname, t) = ls["settings"].get("profile"), user_tctl()
         mode = dict((k, title) for k, title, _s in MODES).get(prof, prof) if prof else _("Default")
-        pname = _("Power") if self.backend == "generic" else "PPT"
+        pname = "PPT" if self.backend in (None, "amd") else _("Power")
         tip = "%s %s" % (tname, fmt(t, " °C")) + (" · %s %s" % (pname, fmt(self.ppt, " W")) if self.ppt is not None else "") + "\n" + \
             _("Mode: %s") % mode + (_(" (applied at startup)") if ls["settings"].get("autostart") else "") + \
             ("\n" + _("Profile deactivated after a crash: choose in the menu") if ls["crashed"] else "") + \
@@ -2837,7 +2848,11 @@ class App(Adw.Application):
             generic, co = win.status.get("backend") == "generic", win.status.get("co") is not None
             assert win.stack.get_page(curve).get_visible() == co and mon.heads[4].get_visible() == co, "Curves page or CO column"
             assert mon.cards["tdc"].get_visible() == ("tdc" in win.status["caps"]) and mon.why.get_visible() == generic, "TDC or reason"
-            assert mon.titles["tctl"].get_text() == (_("Temperature") if generic else "Tctl"), "temperature tile name"
+            amd = win.status.get("backend") == "amd"
+            assert mon.titles["tctl"].get_text() == ("Tctl" if amd else _("Temperature")), "temperature tile name"
+            cpu = next(p for p in win.pages if isinstance(p, CpuPage))
+            assert cpu.params["pl1"].get_visible() == ("pl1" in win.status["caps"]), "PL1 row"
+            assert mon.warn.get_visible() == cpu.warn.get_visible() == bool(win.status.get("warnings")), "warnings"
             for k in (2, n):
                 old = curve.cores
                 mon.telemetry(dict(t, cores=t["cores"][:k]))
