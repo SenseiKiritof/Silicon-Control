@@ -28,7 +28,7 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
 - The open decisions are confirmed (plan revision 2: version 0.1.0, Ryzen Control superseded, AMD + Intel +
   generic, no Intel hardware, Italian protocol keys kept).
 - Phase 0 done: the rename (step 1) and the takeover of Ryzen Control (step 2), installed by the user over Ryzen
-  Control 0.8.0 on the 9800X3D. Next: phase 1, step 3 (vendor backends and capabilities, AMD unchanged).
+  Control 0.8.0 on the 9800X3D. Next: phase 1, step 3, the generic backend (phases 1 and 2 merged, plan revision 4).
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user

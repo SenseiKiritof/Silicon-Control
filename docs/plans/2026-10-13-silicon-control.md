@@ -12,6 +12,14 @@ source) dkms 3.4.3 refused to install a module whose `MODULE_VERSION` (0.1.7) eq
 ryzen-control's `%preun` then removed `ryzen_smu/0.4.1`, the only installed copy. With the same version the new
 package's `dkms add --rpm_safe_upgrade` cancels that removal, as in Ryzen Control's own upgrades.
 
+Revision 4 (2026-10-13): phases 1 and 2 merged, the user's choice. The AMD code is already driven by its
+capabilities: the family entry declares the SMU allowlist and the PM map, the baseline captures only what can be
+read, and every write needs its baseline key (Pinnacle Ridge, with no SMU command, already runs on boost, power
+profile and fans alone, and the selftest proves it). A backend class with one implementation would add nothing:
+the generic backend is a descriptor like a family entry, with no SMU command and no PM table, chosen when the AMD
+gate does not apply or when forced, plus the kernel's knobs; the capabilities reach the GUI through `status` as
+today. The helper stays one file.
+
 ## Context
 
 Ryzen Control (`../Ryzen Control`, v0.8.0, public on GitHub) is a Ryzen Master-style tool for Linux: a root
@@ -80,9 +88,9 @@ power limits and their names, maximum frequency, temperature limit, boost, power
 the CLI refuses the rest, the presets and calibrations use what is there, and the GUI builds its pages and
 rows from it (today it already hides what an AMD family lacks: generalise that).
 
-Code organisation: keep the single-file helper while it stays navigable (ponytail: fewest files); if it has
-to be split, a private module directory under `/usr/lib/silicon-control/` with the entry point in
-`/usr/bin`, decided in phase 1, not before.
+Code organisation (decided in revision 4): the helper stays one file while it stays navigable (ponytail: fewest
+files; about 5000 lines with the selftest). If it has to be split, a private module directory under
+`/usr/lib/silicon-control/` with the entry point in `/usr/bin`.
 
 ## Safety (carried over and extended)
 
@@ -119,26 +127,22 @@ backends nobody here can run stay "expected".
 | 1 | `chore: rename to Silicon Control` — binaries, app id, `/etc`, `/var/lib`, `/run` paths, kernel parameter `siliconctl.off`, gettext domains (msgids with the name, Italian catalogs), systemd units, udev rule, modprobe and polkit files (action id), desktop, metainfo (`<replaces>` the old id), icon, tray, env vars of the fake backend (`SILICONCTL_ROOT`, `SILICONCTL_FAKE_FAMILY`), packaging (spec, debian, PKGBUILD, build scripts), release workflow, README, screenshots | `make check`, `make rpm` / `deb` / `arch`, GUI smoke en/it; `grep -ri ryzen` finds only the driver, the AMD family names, the migration code and history notes |
 | 2 | `feat: take over from Ryzen Control` — packages replace `ryzen-control` (RPM `Obsoletes`, deb `Replaces/Breaks`, Arch `replaces/conflicts`); `DRV_VERSION` unchanged, so the `dkms add --rpm_safe_upgrade` of the new `%post` cancels the `dkms remove` of the old `%preun` (revision 3); `boot` imports `/etc/ryzenctl` (settings, profiles) and `/var/lib/ryzenctl` (calibration data, `crashed` marker) when the new directories do not exist yet; the polkit trust rule and the user's login autostart entry renamed; the old kernel parameter `ryzenctl.off` still honoured | selftest with a fake Ryzen Control state; the user installs over Ryzen Control 0.8.0 on the 9800X3D: profiles and calibrations kept (`new-auto` applies), `hwtest` ok, one service only |
 
-### Phase 1 — backends and capabilities, AMD unchanged
+### Phase 1 — generic backend, capabilities and the GUI from them (phases 1 and 2 merged, revision 4)
 
 | # | Commit | Verification |
 |---|---|---|
-| 3 | `refactor: vendor backends and capabilities` (amd only behind it) | selftest identical on every AMD fake variant; the user's `hwtest` on the 9800X3D |
+| 3 | `feat: generic backend (cpufreq, boost, EPP, powercap, hwmon)` + fake variant: a descriptor without SMU commands, chosen when ryzen_smu, a known codename or a supported layout is missing (HX laptops included) or when forced; maximum frequency through cpufreq, temperatures from hwmon and thermal zones, package power from RAPL energy | selftest identical on every AMD fake variant, and on the generic fake; the user forces the generic backend on the 9800X3D for presets, boost and fans |
 | 4 | `feat(gui): pages and rows from the capabilities` | GUI smoke on every fake variant, screenshots |
 
-### Phase 2 — generic backend
-
-| # | Commit | Verification |
-|---|---|---|
-| 5 | `feat: generic backend (cpufreq, boost, EPP, powercap, hwmon)` + fake variant | selftest; the user forces the generic backend on the 9800X3D (an env var or a setting) for presets, boost and fans |
+### Phase 2 — merged into phase 1 (revision 4)
 
 ### Phase 3 — Intel
 
 | # | Commit | Verification |
 |---|---|---|
-| 6 | research by agents, then a plan revision: per generation (Haswell … Arrow Lake, desktop and laptop) the power-limit, TCC and undervolt interfaces, locks, floors, how to read back; Linux tools to learn from (intel-undervolt, undervolt.py, throttled, thermald) | sources in the revision |
-| 7 | `feat: Intel power limits, TCC offset, boost` (no voltage) + fake variants | selftest; owners' `hwtest` |
-| 8 | `feat: Intel undervolt and its calibration` (only where the mailbox reads back) | selftest with locked and unlocked fakes; owners' `hwtest` |
+| 5 | research by agents, then a plan revision: per generation (Haswell … Arrow Lake, desktop and laptop) the power-limit, TCC and undervolt interfaces, locks, floors, how to read back; Linux tools to learn from (intel-undervolt, undervolt.py, throttled, thermald) | sources in the revision |
+| 6 | `feat: Intel power limits, TCC offset, boost` (no voltage) + fake variants | selftest; owners' `hwtest` |
+| 7 | `feat: Intel undervolt and its calibration` (only where the mailbox reads back) | selftest with locked and unlocked fakes; owners' `hwtest` |
 
 ### Phase 4 — README tables per vendor and release
 
