@@ -1220,3 +1220,13 @@ msgstr "Il firmware continua a sovrascrivere i limiti di potenza: riapplicazione
 #, python-format
 msgid "Profile deselected; CPU values not written: %s"
 msgstr "Profilo deselezionato; valori della CPU non scritti: %s"
+
+#, python-format
+msgid "Generic backend (kernel interfaces only): %s"
+msgstr "Backend generico (solo interfacce del kernel): %s"
+
+msgid "Temperature"
+msgstr "Temperatura"
+
+msgid "Power"
+msgstr "Potenza"

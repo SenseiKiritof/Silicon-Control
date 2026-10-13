@@ -28,7 +28,9 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
 - The open decisions are confirmed (plan revision 2: version 0.1.0, Ryzen Control superseded, AMD + Intel +
   generic, no Intel hardware, Italian protocol keys kept).
 - Phase 0 done: the rename (step 1) and the takeover of Ryzen Control (step 2), installed by the user over Ryzen
-  Control 0.8.0 on the 9800X3D. Next: phase 1, step 3, the generic backend (phases 1 and 2 merged, plan revision 4).
+  Control 0.8.0 on the 9800X3D. Phase 1 (phases 1 and 2 merged, plan revision 4): the generic backend (step 3,
+  verified with `siliconctl.generic` on the 9800X3D) and the GUI from the capabilities (step 4) done; release 0.2.0
+  pending. Next: phase 3, Intel (research first).
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
@@ -209,7 +211,9 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
   from k10temp, coretemp or a thermal zone (`tctl`), the package power from the RAPL counter between two reads of the
   same process (`rapl_power`: `serve`'s 1 Hz telemetry; None at a CLI's first read). Everything else follows from
   the empty allowlist and the baseline keys (Pinnacle Ridge's path). The selftest fails on any SMU command or PM
-  table read on it (`selftest_generic`).
+  table read on it (`selftest_generic`). The GUI builds from what the CPU reports: tiles from `status.caps`, per-core
+  columns only with values, no Curves page without a usable CO, "Temperature"/"Power" and the reason on the generic
+  backend (`telemetry.backend` for the tray); `make check` also runs the smoke on the generic fake.
 - **Modes** are static (no daemon, the dynamic behaviour is done by PBO): Default / Quiet (preset) /
   Eco (calibrated) / Auto (calibrated) / Performance (preset) / Boost (calibrated) / Custom.
   The three calibrated modes share one CO measurement and one margin (+3): Auto adds the

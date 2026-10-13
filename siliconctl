@@ -1389,7 +1389,7 @@ def cmd_telemetry(ctx, args):
                 fans.append({"canale": n, "rpm": rpm, "pwm": hw_read("%s/pwm%d" % (fd, n)),
                              "role": info.get("role", "sconosciuto"), "name": info.get("name")})
     return {"tctl": tctl(), "tccd": tccd,   # APUs: the fast PPT's power; GENERIC: RAPL's
-            "ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(),
+            "ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(), "backend": fam["backend"],
             "ppt_limit": lim.get("ppt_limit", lim.get("fast_limit")),
             "tdc": lim.get("tdc"), "tdc_limit": lim.get("tdc_limit"), "edc_limit": lim.get("edc_limit"),
             "tjmax": lim.get("thm_limit"), "fmax": read_fmax(), "cores": cores, "fans": fans, "power": power_get(),

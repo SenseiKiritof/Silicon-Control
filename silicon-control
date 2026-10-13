@@ -769,14 +769,18 @@ class MonitorPage(Gtk.Box):
         top.append(self.cpu)
         top.append(self.unverified)
         self.append(top)
+        self.why = label("", ["dim-label"], wrap=True, xalign=0.0, visible=False)   # why the generic backend
+        self.append(self.why)
         self.laptop = label("", ["warning"], wrap=True, visible=False)   # laptop_notes, from the telemetry
         self.append(self.laptop)
         tiles = Gtk.Box(spacing=12, homogeneous=True)
-        self.tiles = {}
+        self.tiles, self.cards, self.titles = {}, {}, {}
+        self.names = {"tctl": "Tctl", "ppt": "PPT"}   # the generic backend's: refresh
         for key, title in (("tctl", "Tctl"), ("ppt", "PPT"), ("tdc", "TDC"), ("fmax", "FMax")):
-            c = card()
+            c = self.cards[key] = card()
             value, sub = label("—", ["title-1", "numeric"]), label("", ["dim-label"])
-            c.append(label(title, ["heading"]))
+            self.titles[key] = label(title, ["heading"])
+            c.append(self.titles[key])
             c.append(value)
             c.append(sub)
             bar = Gtk.LevelBar(visible=key in ("ppt", "tdc"))
@@ -788,8 +792,10 @@ class MonitorPage(Gtk.Box):
         table = card()
         self.grid = Gtk.Grid(column_spacing=18, row_spacing=4)
         tips = {3: _("Core voltage at this instant (PM table)"), 4: CO_TIP}
-        for col, h in enumerate((_("Core"), "MHz", "°C", "V", _("CO (Curve Optimizer)"))):
-            self.grid.attach(label(h, ["heading"], xalign=1.0 if col else 0.0, tooltip_text=tips.get(col)), col, 0, 1, 1)
+        self.heads = [label(h, ["heading"], xalign=1.0 if col else 0.0, tooltip_text=tips.get(col))
+                      for col, h in enumerate((_("Core"), "MHz", "°C", "V", _("CO (Curve Optimizer)")))]
+        for col, h in enumerate(self.heads):
+            self.grid.attach(h, col, 0, 1, 1)
         self.cores = []   # one row per active core, built by the first telemetry
         # many cores (16 on two CCDs) scroll instead of making the window taller
         table.append(Gtk.ScrolledWindow(child=self.grid, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER,
@@ -818,9 +824,20 @@ class MonitorPage(Gtk.Box):
         bottom.append(self.power)
         self.append(bottom)
 
-    def refresh(self, st):   # the values live on `telemetry`
+    def refresh(self, st):   # the values live on `telemetry`; what this CPU reports decides the tiles and their names
         self.cpu.set_text(_("%s · %d cores") % (st.get("cpu", "?"), st.get("cores", 0)))
         self.unverified.set_visible(not st.get("verified", True))
+        generic = st.get("backend") == "generic"
+        self.why.set_text(_("Generic backend (kernel interfaces only): %s") % st.get("why_generic") if generic else "")
+        self.why.set_visible(generic)
+        self.names = {"tctl": _("Temperature"), "ppt": _("Power")} if generic else {"tctl": "Tctl", "ppt": "PPT"}
+        for key, name in self.names.items():
+            self.titles[key].set_text(name)
+        caps = st.get("caps")
+        if caps:   # the power always on the generic backend (RAPL); limits and FMax where the baseline has them
+            self.cards["ppt"].set_visible(generic or "ppt" in caps or "fast" in caps)
+            self.cards["tdc"].set_visible("tdc" in caps)
+            self.cards["fmax"].set_visible("fmax" in caps)
 
     def telemetry(self, t):
         notes = laptop_notes(t.get("reapply"))
@@ -828,20 +845,22 @@ class MonitorPage(Gtk.Box):
         self.laptop.set_visible(bool(notes))
         value, sub, _bar = self.tiles["tctl"]
         value.set_text(fmt(t["tctl"], " °C"))
-        sub.set_text("Tccd " + fmt(t["tccd"], " °C") + " · Tjmax " + fmt(t["tjmax"], " °C"))
+        sub.set_text(" · ".join("%s %s" % (n, fmt(v, " °C")) for n, v in (("Tccd", t["tccd"]), ("Tjmax", t["tjmax"])) if v is not None))
         for key, unit in (("ppt", "W"), ("tdc", "A")):
             value, sub, bar = self.tiles[key]
             v, lim = t[key], t[key + "_limit"]
             value.set_text(fmt(v, " " + unit))
-            sub.set_text(_("limit ") + fmt(lim, " " + unit))
+            sub.set_text(_("limit ") + fmt(lim, " " + unit) if lim is not None else "")
+            bar.set_visible(bool(lim))
             if v is not None and lim:
                 bar.set_max_value(lim)
                 bar.set_value(min(v, lim))
         value, sub, _bar = self.tiles["fmax"]
         value.set_text(fmt(t["fmax"], " MHz"))
-        sub.set_text(_("EDC limit ") + fmt(t["edc_limit"], " A"))
-        self.legend["tctl"].set_text("Tctl " + fmt(t["tctl"], " °C"))
-        self.legend["ppt"].set_text("PPT " + fmt(t["ppt"], " W") + " / " + _("limit ") + fmt(t["ppt_limit"], " W"))
+        sub.set_text(_("EDC limit ") + fmt(t["edc_limit"], " A") if t["edc_limit"] is not None else "")
+        self.legend["tctl"].set_text(self.names["tctl"] + " " + fmt(t["tctl"], " °C"))
+        self.legend["ppt"].set_text(self.names["ppt"] + " " + fmt(t["ppt"], " W")
+                                    + (" / " + _("limit ") + fmt(t["ppt_limit"], " W") if t["ppt_limit"] is not None else ""))
         if t["tctl"] is not None:
             self.hist.append((t["tctl"], t["ppt"]))
             self.ppt_limit = t["ppt_limit"]
@@ -860,6 +879,10 @@ class MonitorPage(Gtk.Box):
             labs[1].set_text(fmt(d.get("temp")))
             labs[2].set_text(volts(d.get("volt"), ""))
             labs[3].set_text("%+d" % d["co"] if d.get("co") is not None else _("n/a"))
+        for col, key in ((2, "temp"), (3, "volt"), (4, "co")):   # a column only where this CPU reports it
+            on = any(d.get(key) is not None for d in t["cores"])
+            for w in [self.heads[col]] + [labs[col - 1] for labs in self.cores]:
+                w.set_visible(on)
         for f in t["fans"]:
             lab = self.fan_labels.get(f["canale"])
             if lab is None:
@@ -1938,6 +1961,7 @@ class CurvePage(Page):
         why = st.get("co_unavailable") if st.get("co") is None else None
         self.missing.set_text(_("Curve Optimizer not available on this CPU: %s") % why if why else "")
         self.missing.set_visible(bool(why))
+        self.win.stack.get_page(self).set_visible(not why)   # the reason stays on the Modes page and in `siliconctl status`
         for w in [self.all, self.bar] + self.cores:
             w.set_sensitive(bool(caps) and not why)
         if not caps or why:
@@ -2429,22 +2453,30 @@ def local_state():
 
 
 def user_tctl():
-    """Tctl without root: k10temp (its Tdie where it has one), the fake backend's in --mock; None if unknown."""
+    """(name, °C) of the CPU temperature without root: k10temp's Tctl (its Tdie where it has one), otherwise the package
+    sensor of the other CPUs (coretemp, a CPU thermal zone; as siliconctl's tctl); the fake backend's in --mock; None if
+    unknown."""
+    read = lambda p: open(p).read().strip()
     try:
         if ROOT_DIR:
             with open(ROOT_DIR + "/fake_smu.json") as f:
-                return json.load(f)["tctl"]
+                return "Tctl", json.load(f)["tctl"]
         for d in sorted(os.listdir("/sys/class/hwmon")):
             base = "/sys/class/hwmon/" + d
-            with open(base + "/name") as f:
-                if f.read().strip() != "k10temp":
-                    continue
-            tdie = os.path.exists(base + "/temp2_label") and open(base + "/temp2_label").read().strip() == "Tdie"
-            with open(base + "/temp%d_input" % (2 if tdie else 1)) as f:
-                return int(f.read()) / 1000.0
+            name = read(base + "/name")
+            if name == "k10temp":
+                tdie = os.path.exists(base + "/temp2_label") and read(base + "/temp2_label") == "Tdie"
+                return "Tctl", int(read(base + "/temp%d_input" % (2 if tdie else 1))) / 1000.0
+            for f in sorted(os.listdir(base)) if name == "coretemp" else []:
+                if f.endswith("_label") and read(base + "/" + f).startswith("Package id"):
+                    return _("Temperature"), int(read(base + "/" + f[:-6] + "_input")) / 1000.0
+        for z in sorted(os.listdir("/sys/class/thermal")):
+            if z.startswith("thermal_zone") and read("/sys/class/thermal/%s/type" % z) in (
+                    "x86_pkg_temp", "cpu-thermal", "cpu_thermal", "soc_thermal", "cpu"):
+                return _("Temperature"), int(read("/sys/class/thermal/%s/temp" % z)) / 1000.0
     except (OSError, ValueError, KeyError):
         pass
-    return None
+    return "Tctl", None
 
 
 class Tray:
@@ -2456,7 +2488,7 @@ class Tray:
 
     def __init__(self, app, export=True):
         self.app, self.rev, self.items, self.key = app, 1, [], None
-        self.tip, self.status, self.ppt, self.asking, self.conn = "", "Active", None, False, None
+        self.tip, self.status, self.ppt, self.asking, self.conn, self.backend = "", "Active", None, False, None, None
         self.name = "org.kde.StatusNotifierItem-%d-1" % os.getpid()
         if export:
             self.conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
@@ -2559,9 +2591,10 @@ class Tray:
         if changed:
             self.key, self.rev = key, self.rev + 1
             self.emit(self.MENU, "com.canonical.dbusmenu", "LayoutUpdated", GLib.Variant("(ui)", (self.rev, 0)))
-        prof, t = ls["settings"].get("profile"), user_tctl()
+        prof, (tname, t) = ls["settings"].get("profile"), user_tctl()
         mode = dict((k, title) for k, title, _s in MODES).get(prof, prof) if prof else _("Default")
-        tip = "Tctl %s" % fmt(t, " °C") + (" · PPT %s" % fmt(self.ppt, " W") if self.ppt is not None else "") + "\n" + \
+        pname = _("Power") if self.backend == "generic" else "PPT"
+        tip = "%s %s" % (tname, fmt(t, " °C")) + (" · %s %s" % (pname, fmt(self.ppt, " W")) if self.ppt is not None else "") + "\n" + \
             _("Mode: %s") % mode + (_(" (applied at startup)") if ls["settings"].get("autostart") else "") + \
             ("\n" + _("Profile deactivated after a crash: choose in the menu") if ls["crashed"] else "") + \
             "".join("\n" + n for n in laptop_notes(ls.get("reapply")))
@@ -2575,11 +2608,11 @@ class Tray:
         h = self.app.helper   # the PPT only once siliconctl serve runs anyway (never a prompt for a tooltip), one request at a time
         if h and h.p.poll() is None and not self.asking:
             self.asking = True
-            bg(lambda: h.call("telemetry").get("ppt"), self.got_ppt, lambda _m: self.got_ppt(None))
+            bg(lambda: h.call("telemetry"), self.got_ppt, lambda _m: self.got_ppt({}))
         return changed
 
-    def got_ppt(self, ppt):
-        self.asking, self.ppt = False, ppt
+    def got_ppt(self, t):
+        self.asking, self.ppt, self.backend = False, t.get("ppt"), t.get("backend", self.backend)
 
     def run(self, cmds):
         """A privileged choice from the menu: the application's siliconctl serve (the session's first one asks the
@@ -2799,6 +2832,12 @@ class App(Adw.Application):
             curve = next(p for p in win.pages if isinstance(p, CurvePage))
             t, n = win.h.call("telemetry"), win.status["cores"]
             mon.telemetry(t)   # rows of every core, as after the first 1 Hz poll
+            # pages, tiles, names and columns follow what this CPU reports: the generic backend has no Curves page, no
+            # TDC tile, no CO column, neutral names and its reason; the amd backend (Granite Ridge) everything
+            generic, co = win.status.get("backend") == "generic", win.status.get("co") is not None
+            assert win.stack.get_page(curve).get_visible() == co and mon.heads[4].get_visible() == co, "Curves page or CO column"
+            assert mon.cards["tdc"].get_visible() == ("tdc" in win.status["caps"]) and mon.why.get_visible() == generic, "TDC or reason"
+            assert mon.titles["tctl"].get_text() == (_("Temperature") if generic else "Tctl"), "temperature tile name"
             for k in (2, n):
                 old = curve.cores
                 mon.telemetry(dict(t, cores=t["cores"][:k]))
