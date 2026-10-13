@@ -29,8 +29,8 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   generic, no Intel hardware, Italian protocol keys kept).
 - Phase 0 done: the rename (step 1) and the takeover of Ryzen Control (step 2), installed by the user over Ryzen
   Control 0.8.0 on the 9800X3D. Phase 1 (phases 1 and 2 merged, plan revision 4): the generic backend (step 3,
-  verified with `siliconctl.generic` on the 9800X3D) and the GUI from the capabilities (step 4) done; release 0.2.0
-  pending. Next: phase 3, Intel (research first).
+  verified with `siliconctl.generic` on the 9800X3D) and the GUI from the capabilities (step 4) done, released as
+  v0.2.0 (local tag, installed on the 9800X3D). Next: phase 3, Intel (step 5: research first).
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
