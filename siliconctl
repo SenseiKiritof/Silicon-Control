@@ -1,8 +1,8 @@
 #!/usr/bin/python3
-"""ryzenctl — privileged helper of Ryzen Control (AMD Ryzen desktop; developed on a Ryzen 7 9800X3D).
+"""siliconctl — privileged helper of Silicon Control (AMD Ryzen so far; developed on a Ryzen 7 9800X3D).
 
 The only component that talks to the SMU (ryzen_smu driver) and to the fans. Same command
-grammar for the CLI, the profile files and the `serve` protocol. With RYZENCTL_ROOT set it
+grammar for the CLI, the profile files and the `serve` protocol. With SILICONCTL_ROOT set it
 uses a fake backend (the same as the selftest): no driver, no root.
 """
 import fcntl
@@ -21,10 +21,10 @@ _T = None
 
 
 def _(s):
-    """Translate a user-facing message (domain 'ryzenctl'); catalogs come from RYZEN_CONTROL_LOCALEDIR or the system locale dir; selftest disables them so its English assertions are stable."""
+    """Translate a user-facing message (domain 'siliconctl'); catalogs come from SILICON_CONTROL_LOCALEDIR or the system locale dir; selftest disables them so its English assertions are stable."""
     global _T
     if _T is None:
-        _T = gettext.translation("ryzenctl", localedir=os.environ.get("RYZEN_CONTROL_LOCALEDIR"), fallback=True)
+        _T = gettext.translation("siliconctl", localedir=os.environ.get("SILICON_CONTROL_LOCALEDIR"), fallback=True)
     return _T.gettext(s)
 
 
@@ -57,13 +57,13 @@ FAN_PUMP_TOL = 2
 POWER_PROFILES = ("power-saver", "balanced", "performance")
 
 # ---- Paths ---------------------------------------------------------------------------
-ROOT = os.environ.get("RYZENCTL_ROOT", "")
+ROOT = os.environ.get("SILICONCTL_ROOT", "")
 SMU_DIR = "/sys/kernel/ryzen_smu_drv"
 HWMON = "/sys/class/hwmon"
 CPUFREQ = "/sys/devices/system/cpu/cpufreq"
-ETC = "/etc/ryzenctl"
-STATE = "/var/lib/ryzenctl"
-RUN = "/run/ryzenctl"
+ETC = "/etc/siliconctl"
+STATE = "/var/lib/siliconctl"
+RUN = "/run/siliconctl"
 
 
 def P(path):
@@ -335,10 +335,10 @@ def pm_raw():
     return version, list(struct.unpack("<%df" % (len(data) // 4), data[:len(data) // 4 * 4]))
 
 
-# ---- Fake backend (selftest, RYZENCTL_ROOT, GUI --mock) ------------------------------
+# ---- Fake backend (selftest, SILICONCTL_ROOT, GUI --mock) ------------------------------
 class Fake:
     """Simulates the SMU, PM table, topology, k10temp and power profile of a CPU of the variant
-    in RYZENCTL_FAKE_FAMILY (default: a 9800X3D). State on file so that several CLI invocations
+    in SILICONCTL_FAKE_FAMILY (default: a 9800X3D). State on file so that several CLI invocations
     share it. `drop` = next writes accepted but ignored (readback test). `log` records the
     markers present at each write."""
 
@@ -363,7 +363,7 @@ class Fake:
     FAN_DIR = HWMON + "/hwmon0"
 
     def __init__(self, variant=None):
-        v = self.VARIANTS[variant or os.environ.get("RYZENCTL_FAKE_FAMILY") or "granite"]
+        v = self.VARIANTS[variant or os.environ.get("SILICONCTL_FAKE_FAMILY") or "granite"]
         per = v["cores"] // v["ccds"]
         self.cids = [(c // per) * 8 + c % per for c in range(v["cores"])]   # sysfs core_id: CCD n starts at 8n
         self.disabled = v.get("disabled", [[] for _ccd in range(v["ccds"])])
@@ -883,7 +883,7 @@ def cmd_baseline(ctx, args):
         raise Err(_("baseline not captured: CPU state already modified in this boot"))
     lines = capture_lines()
     src = power_source()   # a laptop: the limits of this power source (source_mismatch)
-    write_atomic(P(STATE + "/baseline.conf"), "# baseline captured by ryzenctl\n" + ("# source %s\n" % src if src else "")
+    write_atomic(P(STATE + "/baseline.conf"), "# baseline captured by siliconctl\n" + ("# source %s\n" % src if src else "")
                  + "\n".join(lines) + "\n")
     touch_sync(P(RUN + "/baseline-done"))
     return values_from_lines(parse_lines("\n".join(lines)))
@@ -895,7 +895,7 @@ def load_baseline(strict=True):
     try:
         text = open(P(STATE + "/baseline.conf")).read()
     except OSError:
-        raise Err(_("baseline missing: CPU writes refused (did the ryzenctl service run?)"))
+        raise Err(_("baseline missing: CPU writes refused (did the siliconctl service run?)"))
     if strict and not os.path.exists(P(RUN + "/baseline-done")):
         raise Err(_("baseline not captured in this boot: CPU writes refused"))
     why = source_mismatch(text) if strict else None
@@ -1107,16 +1107,16 @@ def check_boost(name):
     or applying it (also at boot) is refused while unlock is off."""
     s = load_settings()
     if is_boost(name, s) and not s["unlock"]:
-        raise Err(_("Boost requires unlock (ryzenctl unlock on; in the GUI: Preferences, \"Allow beyond the stock values\")"))
+        raise Err(_("Boost requires unlock (siliconctl unlock on; in the GUI: Preferences, \"Allow beyond the stock values\")"))
 
 
 # ---- Remembered authorization: polkit rule for the calling user -----------------------------
-TRUST_RULE = "/etc/polkit-1/rules.d/50-ryzen-control.rules"
-POLKIT_ACTION = "org.ryzencontrol.RyzenControl.serve"
+TRUST_RULE = "/etc/polkit-1/rules.d/50-silicon-control.rules"
+POLKIT_ACTION = "io.github.senseikiritof.SiliconControl.serve"
 
 
 def trust_user():
-    """User who called ryzenctl via pkexec (GUI) or sudo (CLI); None if unknown."""
+    """User who called siliconctl via pkexec (GUI) or sudo (CLI); None if unknown."""
     uid = os.environ.get("PKEXEC_UID")
     if uid:
         import pwd
@@ -1133,8 +1133,8 @@ def trust_users():
 
 
 def cmd_trust(ctx, args):
-    """trust on|off|status: the calling user no longer re-enters the password for Ryzen Control.
-    Polkit rule limited to this action (pkexec ryzenctl serve), to that user and to their
+    """trust on|off|status: the calling user no longer re-enters the password for Silicon Control.
+    Polkit rule limited to this action (pkexec siliconctl serve), to that user and to their
     active local session: it is not a generic sudo. The first write requires the password."""
     if args == ["status"]:
         return {"trusted": trust_users(), "user": trust_user()}
@@ -1148,8 +1148,8 @@ def cmd_trust(ctx, args):
     users = sorted(users)
     if users:
         write_atomic(P(TRUST_RULE),
-                     "// Generated by `ryzenctl trust on`: these users run Ryzen Control without re-entering the password.\n"
-                     "// Applies only to the action %s (pkexec ryzenctl serve) in an active local session.\n"
+                     "// Generated by `siliconctl trust on`: these users run Silicon Control without re-entering the password.\n"
+                     "// Applies only to the action %s (pkexec siliconctl serve) in an active local session.\n"
                      "polkit.addRule(function(action, subject) {\n"
                      "    if (action.id == \"%s\" && subject.local && subject.active &&\n"
                      "        %s.indexOf(subject.user) >= 0)\n"
@@ -1383,7 +1383,7 @@ def cmd_profile(ctx, args):
             raise Err(_("'baseline' is reserved"))
         lines = parse_lines("\n".join(args[2:]))
         apply_lines(lines, {"dry": True})          # validates everything, does not touch the hardware
-        write_atomic(path, "# ryzenctl profile '%s'\n" % name + "\n".join(" ".join(t) for t in lines) + "\n")
+        write_atomic(path, "# siliconctl profile '%s'\n" % name + "\n".join(" ".join(t) for t in lines) + "\n")
         if name == s["profile"]:
             reapply_off()   # saved, not applied: `reapply` must not write it before the next apply or boot
         return {"saved": name, "lines": len(lines)}
@@ -1800,7 +1800,7 @@ def co_limits_reusable(params):
     if not saved or not params.get("reuse", 1):
         return None
     if saved.get("colimit", 0) > params["colimit"] or len(saved.get("results", {})) != CORES \
-            or saved.get("cores", 8) != CORES:   # another CPU (files before 0.5 are all from 8-core CPUs)
+            or saved.get("cores", 8) != CORES:   # another CPU (Ryzen Control files before 0.5 are all from 8-core CPUs)
         return None
     if not saved.get("method"):          # measurement from a version without the heavy method in the search: not valid
         return None
@@ -2125,7 +2125,7 @@ def at_mv_per_step(st):
 def cmd_autotune(ctx, args):
     """autotune start eco|auto|boost [key=value…] | verify <profile> [minutes=N watchdog=1] | step | status | abort |
     finish | save [apply] | estimate eco|auto|boost [key=value…]. Under `serve` the hardware watchdog follows the run."""
-    wd_cleanup()                               # one left with systemd by a ryzenctl that died
+    wd_cleanup()                               # one left with systemd by a siliconctl that died
     if WD and args[:1] == ["step"]:
         WD.follow(at_load())                   # (re)armed before the step: a resumed run is protected too
     try:
@@ -2260,7 +2260,7 @@ def _autotune(ctx, args):
 
 def at_attribute_crash(st):
     """The step in `in_progress` belongs to a previous boot (the system crashed during that test), or to a
-    ryzenctl that is gone (it died or was killed mid-test, no reboot: counted as a crash too). State only, no
+    siliconctl that is gone (it died or was killed mid-test, no reboot: counted as a crash too). State only, no
     SMU write (so that `boot` calls it too, and the memory of the failures is updated before the user
     chooses Resume or Cancel)."""
     ip = st.get("in_progress")
@@ -2296,7 +2296,7 @@ def at_step(ctx, st, base):
     st.pop("interrupted", None)
     same_boot = (st.get("in_progress") or {}).get("boot_id") == boot_id()
     if at_attribute_crash(st):
-        if same_boot:   # the ryzenctl that ran the test died: its CO under test is still applied
+        if same_boot:   # the siliconctl that ran the test died: its CO under test is still applied
             apply_lines(profile_lines("baseline"), ctx, "cpu")
         at_save(st)
         return st
@@ -2697,30 +2697,30 @@ def cmd_crashed(ctx, args):
 
 def cmd_notify(ctx, args):
     """From the user's XDG autostart: warns if the previous boot ended with a crash. A click
-    on the notification opens Ryzen Control (notify-send --action waits for the choice; with a
+    on the notification opens Silicon Control (notify-send --action waits for the choice; with a
     libnotify without --action the plain notification remains)."""
     info = crashed_info()
     if info:
-        msg = _("Profile '%s' has been disabled: the system crashed (%s). Click to open Ryzen Control and decide.") % (
+        msg = _("Profile '%s' has been disabled: the system crashed (%s). Click to open Silicon Control and decide.") % (
             info.get("profile") or "-", info.get("time", "?"))
         if FAKE:  # the selftest runs in the user's session: no real notifications
             FAKE.s["notified"] = msg
             FAKE.save()
         else:
-            cmd = ["notify-send", "-u", "critical", "-a", "Ryzen Control", "-i", "org.ryzencontrol.RyzenControl",
-                   "-h", "string:desktop-entry:org.ryzencontrol.RyzenControl", "Ryzen Control", msg]
-            r = subprocess.run(cmd[:1] + ["-A", "default=" + _("Open Ryzen Control")] + cmd[1:], capture_output=True, text=True)
+            cmd = ["notify-send", "-u", "critical", "-a", "Silicon Control", "-i", "io.github.senseikiritof.SiliconControl",
+                   "-h", "string:desktop-entry:io.github.senseikiritof.SiliconControl", "Silicon Control", msg]
+            r = subprocess.run(cmd[:1] + ["-A", "default=" + _("Open Silicon Control")] + cmd[1:], capture_output=True, text=True)
             if r.returncode != 0:
                 subprocess.run(cmd, capture_output=True)
             elif r.stdout.strip() == "default":
-                subprocess.Popen(["ryzen-control"], start_new_session=True, stdin=subprocess.DEVNULL,
+                subprocess.Popen(["silicon-control"], start_new_session=True, stdin=subprocess.DEVNULL,
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return {"crashed": info}
 
 
 # ---- Laptops: the firmware rewrites the limits, the profile's are written again --------------------------------
 # The firmware/EC rewrites the power limits on AC changes, after sleep and on some models periodically; amd-pmf at
-# every platform profile and power supply change. ryzenctl-reapply.timer (every 10 s) and a udev rule (AC changes)
+# every platform profile and power supply change. siliconctl-reapply.timer (every 10 s) and a udev rule (AC changes)
 # run `reapply`, only while REAPPLY_WANTED exists (ConditionPathExists: no cost on desktops).
 REAPPLY_WANTED = RUN + "/reapply-wanted"   # a laptop, Apply at startup, a selected profile that changes a limit
 REAPPLY_STATE = RUN + "/reapply.json"      # corrections, give-up, limits held on the other source (read by the tray)
@@ -3246,12 +3246,12 @@ def fmt_hwtest(r):
 # On Ryzen 9000 a too negative CO can freeze the machine instead of resetting it. While a calibration or a
 # verification runs under `serve` (the GUI), the hardware watchdog is handed to systemd (RuntimeWatchdogUSec):
 # PID 1 pings it as long as the system lives, so a freeze becomes a reset after WD_SEC and the crash-guard and
-# the resume of the run take over, while a ryzenctl that dies or is killed does not reset the PC: its run counts
-# as crashed when ryzenctl starts again (at_attribute_crash, pid of the step) and the watchdog it left with
+# the resume of the run take over, while a siliconctl that dies or is killed does not reset the PC: its run counts
+# as crashed when siliconctl starts again (at_attribute_crash, pid of the step) and the watchdog it left with
 # systemd is released then (wd_cleanup). The CLI (one process per step) never arms it.
 WD_CLASS = "/sys/class/watchdog"
 WD_SEC = 60                       # timeout given to systemd, which pings at half of it
-WD_STATE = RUN + "/watchdog"      # pid of the ryzenctl that handed the watchdog to systemd
+WD_STATE = RUN + "/watchdog"      # pid of the siliconctl that handed the watchdog to systemd
 WD = None                         # the Watchdog of this `serve` process; None under the CLI
 
 
@@ -3271,12 +3271,12 @@ def sd_watchdog(usec=None):
 
 
 def pid_alive(pid):
-    """Is `pid` still a running ryzenctl? (None: unknown, assumed alive)"""
+    """Is `pid` still a running siliconctl? (None: unknown, assumed alive)"""
     if pid is None:
         return True
     try:
         with open("/proc/%d/cmdline" % pid, "rb") as f:
-            return b"ryzenctl" in f.read()
+            return b"siliconctl" in f.read()
     except (OSError, ValueError):
         return False
 
@@ -3290,8 +3290,8 @@ def wd_release():
 
 
 def wd_cleanup():
-    """The watchdog left with systemd by a ryzenctl that died (no reset: PID 1 kept pinging it) is released at the
-    next start of ryzenctl."""
+    """The watchdog left with systemd by a siliconctl that died (no reset: PID 1 kept pinging it) is released at the
+    next start of siliconctl."""
     try:
         owner = int(read_text(WD_STATE))
     except (OSError, ValueError):
@@ -3352,7 +3352,7 @@ class Watchdog:
         if why:
             self.status = _("unavailable: %s") % why
             return
-        write_atomic(P(WD_STATE), str(os.getpid()))   # first: if this process dies, the next ryzenctl releases it
+        write_atomic(P(WD_STATE), str(os.getpid()))   # first: if this process dies, the next siliconctl releases it
         if sd_watchdog(WD_SEC * 10 ** 6) != WD_SEC * 10 ** 6 or read_text(self.sys + "/state") != "active":
             wd_release()
             self.status = _("unavailable: %s") % _("systemd did not take the watchdog")
@@ -3362,7 +3362,7 @@ class Watchdog:
 
     def disarm(self, final=False):
         """Released if armed; final (serve exiting): never armed again. False if systemd still drives it (harmless:
-        PID 1 keeps pinging it; the next start of ryzenctl releases it)."""
+        PID 1 keeps pinging it; the next start of siliconctl releases it)."""
         self.closed = self.closed or final
         if not self.armed:
             return True
@@ -3466,7 +3466,7 @@ def expect_err(argv, needle, ctx=None):
 def selftest():
     global ROOT, FAKE, _T
     _T = gettext.NullTranslations()
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-")
     FAKE = Fake("granite")
     init_cpu()
     # topology and encodings: 8 cores of one CCD, core c = cpus c and c+8, mask = core << 20 (as before phase 5)
@@ -4219,7 +4219,7 @@ def selftest():
 def selftest_watchdog():
     """The hardware watchdog handed to systemd (fake RuntimeWatchdogUSec, never the real one): only while a run goes on
     under serve, released at done/abort/end of input, never taken when it could not be stopped or is not ours; a
-    serve killed mid-run leaves it with systemd (no reset) and the next ryzenctl releases it and counts the step as
+    serve killed mid-run leaves it with systemd (no reset) and the next siliconctl releases it and counts the step as
     a crash."""
     state = lambda: read_text(Fake.WD_SYS + "/state")
     FAKE.wd_files()
@@ -4290,10 +4290,10 @@ def selftest_watchdog():
         "armed (60 s)", "armed (60 s)", "disarmed"] and state() == "inactive" and not os.path.exists(P(AT_ABORT_FLAG))
     run(["autotune", "abort"])
     run(["profile", "delete", "wdv"])
-    # a real `serve` killed mid-run (no reset: systemd keeps pinging); the next ryzenctl releases the watchdog
+    # a real `serve` killed mid-run (no reset: systemd keeps pinging); the next siliconctl releases the watchdog
     # and counts the step of the dead process as a crash, with the CO under test back to the baseline
     pr = subprocess.Popen([sys.executable, os.path.abspath(__file__), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                          env=dict(os.environ, RYZENCTL_ROOT=ROOT, RYZENCTL_FAKE_FAMILY="granite", LANGUAGE="C", LC_ALL="C.UTF-8"),
+                          env=dict(os.environ, SILICONCTL_ROOT=ROOT, SILICONCTL_FAKE_FAMILY="granite", LANGUAGE="C", LC_ALL="C.UTF-8"),
                           text=True)
     try:
         pr.stdin.write(json.dumps(["autotune", "start", "eco", "step=3", "reuse=0"]) + "\n")
@@ -4308,7 +4308,7 @@ def selftest_watchdog():
     assert state() == "active" and read_text(WD_STATE) == str(pr.pid)
     st = at_load()
     st["in_progress"] = {"kind": "co_par", "cores": list(range(CORES)), "value": -10, "boot_id": boot_id(), "pid": os.getpid()}
-    assert not at_attribute_crash(dict(st)), "a step of a living ryzenctl is not a crash"
+    assert not at_attribute_crash(dict(st)), "a step of a living siliconctl is not a crash"
     st["in_progress"]["pid"] = pr.pid
     at_save(st)
     FAKE.s["co"] = [-10] * CORES                                  # the CO under test, still applied
@@ -4321,11 +4321,11 @@ def selftest_watchdog():
 
 
 def selftest_variants():
-    """Phase 5: the same ryzenctl on a 16-core CPU with two CCDs and on a CPU whose PM table cannot be
+    """Phase 5: the same siliconctl on a 16-core CPU with two CCDs and on a CPU whose PM table cannot be
     read (PPT/TDC/EDC/Tjmax refused, CO/FMax fine)."""
     global ROOT, FAKE
     # ---- 16 cores on two CCDs (9950X) ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-16-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-16-")
     FAKE = Fake("granite16")
     init_cpu()
     assert CORES == 16 and TOPO[8] == (8, "8,24") and TOPO[15] == (15, "15,31")
@@ -4356,7 +4356,7 @@ def selftest_variants():
     assert json.loads(open(P(CO_LIMITS_PATH)).read())["cores"] == 16
     run(["autotune", "abort"])
     # ---- a PM table that cannot be read: fail closed for the limits ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-nopm-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-nopm-")
     FAKE = Fake("nopm")
     init_cpu()
     run(["boot"])
@@ -4376,7 +4376,7 @@ def selftest_variants():
     assert st["phase"] == "done" and "error" not in st and not any(l.startswith("ppt") for l in st["profile_lines"]), st
     run(["autotune", "abort"])
     # ---- one CCD with 6 cores (9600X): only CCD0 present; slots from the fuses, PM table values by slot ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-6-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-6-")
     FAKE = Fake("granite6")           # slots 2 and 5 disabled
     init_cpu()
     assert CORES == 6 and co_support() is None and core_map() == [(0, 0), (0, 1), (0, 3), (0, 4), (0, 6), (0, 7)]
@@ -4386,7 +4386,7 @@ def selftest_variants():
     assert temps == [FAKE.s["tctl"] - 6.0 + s % 3 for _ccd, s in core_map()], temps   # core 2 = slot 3
     assert sample_cores()["volt"] == [1.25, 1.25, round(1.25 - 7 * 0.003, 3), 1.25, 1.25, 1.25]
     # ---- two CCDs with 6 cores each (9900X): the physical slots come from the core fuses ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-12-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-12-")
     FAKE = Fake("granite12")          # CCD0 slots 2 and 5 disabled, CCD1 slots 0 and 7
     init_cpu()
     assert CORES == 12 and TOPO[6][0] == 8 and co_support() is None
@@ -4413,7 +4413,7 @@ def selftest_variants():
     r = run(["hwtest"])
     assert r["co"].startswith("ok") and r["esito"] == "ok", r
     # fuses that do not match the topology (a core more on CCD0 than Linux sees): no per-core CO at all
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-12b-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-12b-")
     FAKE = Fake("fusebad")
     init_cpu()
     assert core_map() is None and "physical position" in co_support()
@@ -4433,7 +4433,7 @@ def selftest_variants():
     assert r["co"].startswith("skipped") and r["fmax"].startswith("ok") and r["esito"] == "ok", r
     assert all(c["co"] is None for c in run(["telemetry"])["cores"])
     # ---- Raphael (Ryzen 7000): IDs of ZenStates-Core, not verified, no readable map of the limits ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-raphael-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-raphael-")
     FAKE = Fake("raphael")
     init_cpu()
     st = run(["status"])
@@ -4447,7 +4447,7 @@ def selftest_variants():
     expect_err(["shaper", "raw"], "not available")
     # ---- Ryzen 5000 (Vermeer, a 5900X: 2 CCDs × 6): MP1 CO in −30..+30, RSMU limits read back from the
     # PM table, no FMax command; the enabled CCDs from the Zen 3 "down" fuses ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-vermeer-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-vermeer-")
     FAKE = Fake("vermeer")            # CCD0 slots 1 and 6 disabled, CCD1 slots 0 and 3
     init_cpu()
     st = run(["status"])
@@ -4480,14 +4480,14 @@ def selftest_variants():
     assert run(["status"])["limits"]["ppt"] is None
     expect_err(["ppt", "100"], "PM table")
     # a 5800X on the second CCD of a two-CCD package: the fuses are read even for a complete CCD
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-vermeer8-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-vermeer8-")
     FAKE = Fake("vermeer8")
     init_cpu()
     assert core_map() == [(1, s) for s in range(8)] and co_mask(0) == 1 << 28
     run(["boot"])
     assert run(["co", "0", "-10"])["co"][0] == -10 and FAKE.s["co"][0] == -10
     # ---- Ryzen 3000 (Matisse): no CO, no FMax; RSMU limits; Quiet turns the boost off ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-matisse-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-matisse-")
     FAKE = Fake("matisse")
     init_cpu()
     st = run(["status"])
@@ -4508,7 +4508,7 @@ def selftest_variants():
     r = run(["hwtest"])
     assert r["co"].startswith("skipped") and r["fmax"].startswith("skipped") and r["boost"].startswith("ok") and r["esito"] == "ok", r
     # ---- Ryzen 2000 (Pinnacle Ridge): no SMU command at all; boost, power profile and fans ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-pinnacle-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-pinnacle-")
     FAKE = Fake("pinnacle")
     init_cpu()
     run(["boot"])
@@ -4525,7 +4525,7 @@ def selftest_variants():
     expect_err(["boost", "off"], "not available")
     assert run(["status"])["boost"] is None
     # ---- motherboard limits in the BIOS (PBO "Enabled": PPT 1000 W): Quiet on AMD's Eco mode, Auto refused ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-board-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-board-")
     FAKE = Fake("granite")
     FAKE.s.update({"ppt": 1000.0, "tdc": 1000.0, "edc": 1000.0})
     FAKE.save()
@@ -4549,7 +4549,7 @@ def selftest_variants():
     # ---- desktop APUs (Cezanne 5700G, Phoenix 8700G): fast/slow PPT, Tctl, TDC/EDC through MP1, read back from
     # the PM table; STAPM read only; no CO, no FMax (in a laptop: selftest_laptop) ----
     for variant, name in (("cezanne", "Cezanne"), ("phoenix", "Phoenix")):
-        ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-%s-" % variant)
+        ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-%s-" % variant)
         FAKE = Fake(variant)
         init_cpu()
         st = run(["status"])
@@ -4574,7 +4574,7 @@ def selftest_variants():
         assert tele["ppt"] == 52.0 and tele["ppt_limit"] == 88.0, tele
     # ---- custom calibration: from a base mode, saved under its own name; the mode's profile and the shared
     # CO measurement stay as they are (the user keeps the Auto that works while trying other parameters) ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-custom-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-custom-")
     FAKE = Fake("granite")
     init_cpu()
     run(["boot"])
@@ -4648,7 +4648,7 @@ def selftest_laptop():
     def wanted():
         return os.path.exists(P(REAPPLY_WANTED))
     # ---- a mini PC: no system battery (a wireless mouse's does not count), no power source, nothing re-applied ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-minipc-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-minipc-")
     FAKE = Fake("phoenix")
     init_cpu()
     supply("hidpp_battery_0", type="Battery", scope="Device")
@@ -4663,7 +4663,7 @@ def selftest_laptop():
     assert not wanted() and run(["reapply"]) is None and writes() == n and "fast" not in FAKE.s
     assert "Laptop" not in fmt_status(run(["status"]))
     # ---- the same APU in a laptop, booted on AC ----
-    ROOT = tempfile.mkdtemp(prefix="ryzenctl-selftest-laptop-")
+    ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-laptop-")
     FAKE = Fake("phoenix")
     init_cpu()
     FAKE.s["pmf"] = True
@@ -4789,7 +4789,7 @@ def main():
         traceback.print_exc()
         sys.exit(2)
     if isinstance(result, dict) and (argv[0] in ("boot", "resume") and result.get("errors") or result.get("baseline_error")):
-        print("ryzenctl %s: %s" % (argv[0], json.dumps(result, ensure_ascii=False)), file=sys.stderr)
+        print("siliconctl %s: %s" % (argv[0], json.dumps(result, ensure_ascii=False)), file=sys.stderr)
     if argv[0] in FORMAT:
         print(FORMAT[argv[0]](result))
     elif isinstance(result, str):

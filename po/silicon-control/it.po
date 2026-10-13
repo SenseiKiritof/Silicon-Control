@@ -1,9 +1,9 @@
-# Italian translation of the Ryzen Control GUI (ryzen-control).
-# This file is distributed under the same license as the Ryzen Control package.
+# Italian translation of the Silicon Control GUI (silicon-control).
+# This file is distributed under the same license as the Silicon Control package.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: ryzen-control 0.4.2\n"
+"Project-Id-Version: silicon-control\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-10-10 12:00+0200\n"
 "PO-Revision-Date: 2026-10-10 12:00+0200\n"
@@ -106,8 +106,8 @@ msgstr "0 min"
 msgid "A %s calibration started on %s was left halfway (%s). %s Resume it from where it was, or discard it and stay on the stock values?"
 msgstr "Una calibrazione %s iniziata il %s è rimasta a metà (%s). %s Riprenderla da dove era o annullarla restando ai valori di fabbrica?"
 
-msgid "A polkit rule is written that authorises your user, in the active local session, to start \"ryzenctl serve\" without a password: it only covers Ryzen Control, it is not a generic sudo. In exchange, any program run as your user will be able to change limits, Curve Optimizer and fans without asking you anything (always within the ryzenctl ceilings). It can be disabled from here at any time."
-msgstr "Viene scritta una regola polkit che autorizza il tuo utente, nella sessione locale attiva, ad avviare «ryzenctl serve» senza password: vale solo per Ryzen Control, non è un sudo generico. In cambio, qualunque programma eseguito col tuo utente potrà cambiare limiti, Curve Optimizer e ventole senza chiederti nulla (sempre entro i tetti di ryzenctl). Si disattiva da qui in qualsiasi momento."
+msgid "A polkit rule is written that authorises your user, in the active local session, to start \"siliconctl serve\" without a password: it only covers Silicon Control, it is not a generic sudo. In exchange, any program run as your user will be able to change limits, Curve Optimizer and fans without asking you anything (always within the siliconctl ceilings). It can be disabled from here at any time."
+msgstr "Viene scritta una regola polkit che autorizza il tuo utente, nella sessione locale attiva, ad avviare «siliconctl serve» senza password: vale solo per Silicon Control, non è un sudo generico. In cambio, qualunque programma eseguito col tuo utente potrà cambiare limiti, Curve Optimizer e ventole senza chiederti nulla (sempre entro i tetti di siliconctl). Si disattiva da qui in qualsiasi momento."
 
 msgid "Adapts to the hardware with load tests"
 msgstr "Si adatta all'hardware con test di carico"
@@ -140,8 +140,8 @@ msgstr "Automatica (consigliata)"
 msgid "Automatic (recommended): %s\n\n%s\n\n%s"
 msgstr "Automatica (consigliata): %s\n\n%s\n\n%s"
 
-msgid "Baseline of this boot missing: no CPU write possible (ryzenctl.service did not capture it, see `ryzenctl status`)."
-msgstr "Baseline di questo boot assente: nessuna scrittura CPU possibile (ryzenctl.service non l'ha catturata, vedi `ryzenctl status`)."
+msgid "Baseline of this boot missing: no CPU write possible (siliconctl.service did not capture it, see `siliconctl status`)."
+msgstr "Baseline di questo boot assente: nessuna scrittura CPU possibile (siliconctl.service non l'ha catturata, vedi `siliconctl status`)."
 
 msgid "Beyond the stock values?"
 msgstr "Oltre i valori di fabbrica?"
@@ -499,8 +499,8 @@ msgstr "ginocchio PPT"
 msgid "PPT limit"
 msgstr "limite PPT"
 
-msgid "PPT, TDC and EDC will be allowed beyond the stock values and FMax beyond the baseline (up to the ryzenctl unlock ceilings). More heat and power draw, possible sudden reboots: save your work. Tjmax stays limited to the baseline anyway."
-msgstr "Verranno ammessi PPT, TDC ed EDC oltre i valori di fabbrica e FMax oltre la baseline (fino ai tetti di sblocco di ryzenctl). Più calore e consumo, possibili riavvii improvvisi: salva il lavoro. Tjmax resta comunque limitata alla baseline."
+msgid "PPT, TDC and EDC will be allowed beyond the stock values and FMax beyond the baseline (up to the siliconctl unlock ceilings). More heat and power draw, possible sudden reboots: save your work. Tjmax stays limited to the baseline anyway."
+msgstr "Verranno ammessi PPT, TDC ed EDC oltre i valori di fabbrica e FMax oltre la baseline (fino ai tetti di sblocco di siliconctl). Più calore e consumo, possibili riavvii improvvisi: salva il lavoro. Tjmax resta comunque limitata alla baseline."
 
 msgid "PPT/TDC/EDC up to the unlock ceilings, FMax above the baseline"
 msgstr "PPT/TDC/EDC fino ai tetti di sblocco, FMax oltre la baseline"
@@ -527,8 +527,8 @@ msgstr "Le modalità calibrate misurano il Curve Optimizer per core, non disponi
 msgid "Precision Boost (kernel switch): off keeps the clock at the base frequency, the frequency lever of CPUs without FMax"
 msgstr "Precision Boost (interruttore del kernel): spento tiene la frequenza base, la leva sulla frequenza delle CPU senza FMax"
 
-msgid "Polkit rule for your user, only for Ryzen Control in the local session: the password is needed once to write it, then never again"
-msgstr "Regola polkit per il tuo utente, solo per Ryzen Control nella sessione locale: la prima volta la password serve per scriverla, poi mai più"
+msgid "Polkit rule for your user, only for Silicon Control in the local session: the password is needed once to write it, then never again"
+msgstr "Regola polkit per il tuo utente, solo per Silicon Control nella sessione locale: la prima volta la password serve per scriverla, poi mai più"
 
 msgid "Power mode"
 msgstr "Energia"
@@ -640,8 +640,8 @@ msgstr "Imposta i valori nelle pagine CPU, Curve e Ventole e usa \"Applica ora\"
 msgid "Start"
 msgstr "Avvia"
 
-msgid "Start Ryzen Control at login"
-msgstr "Avvia Ryzen Control al login"
+msgid "Start Silicon Control at login"
+msgstr "Avvia Silicon Control al login"
 
 #, python-format
 msgid "Started at %s · estimated %s in total"
@@ -888,8 +888,8 @@ msgstr "ruolo non rilevato: usa \"Rileva ruoli\" (nome: Invio per salvare)"
 msgid "rpm: use Identify"
 msgstr "giri: usa Identifica"
 
-msgid "ryzenctl serve is not responding (pkexec denied or process terminated): restart the application"
-msgstr "ryzenctl serve non risponde (pkexec negato o processo terminato): riavvia l'applicazione"
+msgid "siliconctl serve is not responding (pkexec denied or process terminated): restart the application"
+msgstr "siliconctl serve non risponde (pkexec negato o processo terminato): riavvia l'applicazione"
 
 msgid "simulated"
 msgstr "simulato"
@@ -990,8 +990,8 @@ msgstr "core %s +%d"
 msgid ", single-core test of core %s"
 msgstr ", test single-core del core %s"
 
-msgid "During a calibration or a verification the motherboard watchdog is handed to systemd: if the PC freezes, it restarts by itself after the timeout and the run resumes from where it was, with that step recorded as unstable. If only Ryzen Control closes or crashes, nothing restarts: the step counts as a crash when it opens again."
-msgstr "Durante una calibrazione o una verifica il watchdog della scheda madre viene affidato a systemd: se il PC si blocca, si riavvia da solo allo scadere del tempo e la prova riprende da dov'era, con quel passo registrato come instabile. Se si chiude o va in crash solo Ryzen Control, non si riavvia nulla: alla riapertura il passo conta come crash."
+msgid "During a calibration or a verification the motherboard watchdog is handed to systemd: if the PC freezes, it restarts by itself after the timeout and the run resumes from where it was, with that step recorded as unstable. If only Silicon Control closes or crashes, nothing restarts: the step counts as a crash when it opens again."
+msgstr "Durante una calibrazione o una verifica il watchdog della scheda madre viene affidato a systemd: se il PC si blocca, si riavvia da solo allo scadere del tempo e la prova riprende da dov'era, con quel passo registrato come instabile. Se si chiude o va in crash solo Silicon Control, non si riavvia nulla: alla riapertura il passo conta come crash."
 
 #, python-format
 msgid "Hardware watchdog: %s"
@@ -1177,8 +1177,8 @@ msgstr "Modalità: %s"
 msgid "Modes and Apply at startup from the tray; closing the window keeps the icon. KDE Plasma; on GNOME it needs the AppIndicator extension"
 msgstr "Modalità e Applica all'avvio dal vassoio; chiudendo la finestra l'icona resta. KDE Plasma; su GNOME serve l'estensione AppIndicator"
 
-msgid "Open Ryzen Control"
-msgstr "Apri Ryzen Control"
+msgid "Open Silicon Control"
+msgstr "Apri Silicon Control"
 
 msgid "Profile '%s' deactivated after a crash (%s)"
 msgstr "Profilo '%s' disattivato dopo un crash (%s)"

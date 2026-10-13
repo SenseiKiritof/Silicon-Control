@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Checks that a catalog po/<domain>/<lang>.po translates exactly the _("…") strings of the source file
-named after its domain, in the current directory (ryzenctl, ryzen-control): a missing or fuzzy entry would
+named after its domain, in the current directory (siliconctl, silicon-control): a missing or fuzzy entry would
 show up in English, an unused one is left over from a changed string. Standard library only, like msgfmt.py.
 
 usage: check.py po/<domain>/<lang>.po…

@@ -1,21 +1,23 @@
-Source: ryzen-control
+Source: silicon-control
 Section: utils
 Priority: optional
 Maintainer: senseikiritof <tonifede98@gmail.com>
 Build-Depends: debhelper-compat (= 13), dh-sequence-dkms, python3
 Standards-Version: 4.7.0
-Homepage: https://github.com/SenseiKiritof/Ryzen-Control
+Homepage: https://github.com/SenseiKiritof/Silicon-Control
 Rules-Requires-Root: no
 
-Package: ryzen-control
+Package: silicon-control
 Architecture: all
 Depends: ${misc:Depends}, python3 (>= 3.9), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.5), pkexec, polkitd,
  systemd, kmod
+Conflicts: ryzen-control
 Recommends: stress-ng, libnotify-bin
-Description: Ryzen Master-style control for AMD Ryzen CPUs
- Per-core Curve Optimizer, PPT/TDC/EDC limits, boost frequency (FMax), maximum
- temperature, power profile and motherboard fans, with modes calibrated on the
- CPU (desktops; the APUs of mini PCs and laptops: power limits), a
- GTK4/libadwaita GUI with a tray icon and a root helper (ryzenctl).
+Description: power limits, boost, undervolt and fans of the CPU, calibrated per chip
+ Successor of Ryzen Control; supported so far: AMD Ryzen. Per-core Curve
+ Optimizer, PPT/TDC/EDC limits, boost frequency (FMax), maximum temperature,
+ power profile and motherboard fans, with modes calibrated on the CPU
+ (desktops; the APUs of mini PCs and laptops: power limits), a GTK4/libadwaita
+ GUI with a tray icon and a root helper (siliconctl).
  Profiles are applied at boot, with protection after a crash. Includes the
  source of the ryzen_smu kernel module, built by DKMS.

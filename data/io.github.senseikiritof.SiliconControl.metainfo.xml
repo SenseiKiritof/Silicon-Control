@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.senseikiritof.SiliconControl</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Silicon Control</name>
+  <summary>Power limits, boost, undervolt and fans of the CPU</summary>
+  <summary xml:lang="it">Limiti di potenza, boost, undervolt e ventole della CPU</summary>
+  <description>
+    <p>
+      Control of the processor on Linux, successor of Ryzen Control. Supported so far: AMD Ryzen
+      (Ryzen 9000 desktop verified, Ryzen 1000–7000 desktop and the APUs of desktops, mini PCs and
+      laptops expected), with per-core Curve Optimizer and Curve Shaper, PPT/TDC/EDC limits, boost
+      frequency and maximum temperature, power profile and motherboard fans.
+    </p>
+    <p xml:lang="it">
+      Controllo del processore su Linux, successore di Ryzen Control. Supportati finora: AMD Ryzen
+      (Ryzen 9000 desktop verificati, Ryzen 1000–7000 desktop e gli APU di desktop, mini PC e
+      portatili attesi), con Curve Optimizer e Curve Shaper per core, limiti PPT/TDC/EDC, frequenza
+      di boost e temperatura massima, profilo energetico e ventole della scheda madre.
+    </p>
+    <p>
+      Default, Quiet, Performance, Eco, Auto and Boost modes with automatic calibration, profiles applied at
+      boot and protection after a crash: the profile is not reapplied until the user decides.
+    </p>
+    <p xml:lang="it">
+      Modalità Default, Quiet, Performance, Eco, Auto e Boost con calibrazione automatica, profili applicati
+      all'avvio e protezione dopo un crash: il profilo non viene riapplicato finché non lo
+      decide l'utente.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.senseikiritof.SiliconControl.desktop</launchable>
+  <url type="homepage">https://github.com/SenseiKiritof/Silicon-Control</url>
+  <provides>
+    <binary>silicon-control</binary>
+    <binary>siliconctl</binary>
+  </provides>
+  <replaces>
+    <id>org.ryzencontrol.RyzenControl</id>
+  </replaces>
+  <developer id="io.github.senseikiritof">
+    <name>senseikiritof</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-10-13"/>
+  </releases>
+</component>

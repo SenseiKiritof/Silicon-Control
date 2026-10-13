@@ -1,19 +1,19 @@
 [Unit]
-Description=Ryzen Control: CPU baseline, crash-guard and profile at boot
+Description=Silicon Control: CPU baseline, crash-guard and profile at boot
 # The module is blacklisted (modprobe.d): only this service loads it, so the kernel parameter
-# ryzenctl.off is a complete escape hatch.
+# siliconctl.off is a complete escape hatch.
 After=dkms.service systemd-modules-load.service
-ConditionKernelCommandLine=!ryzenctl.off
+ConditionKernelCommandLine=!siliconctl.off
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStartPre=-/usr/sbin/modprobe ryzen_smu
-ExecStart=/usr/bin/ryzenctl boot
+ExecStart=/usr/bin/siliconctl boot
 # Clean shutdown: removes the `dirty` marker. If it is missing at the next boot with an active
 # profile, the system crashed and the CPU profile is not reapplied.
-ExecStop=/usr/bin/ryzenctl shutdown
-StateDirectory=ryzenctl
+ExecStop=/usr/bin/siliconctl shutdown
+StateDirectory=siliconctl
 
 [Install]
 WantedBy=multi-user.target

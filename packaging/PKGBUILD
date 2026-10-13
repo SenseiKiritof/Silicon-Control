@@ -1,28 +1,29 @@
 # Maintainer: senseikiritof <tonifede98@gmail.com>
 # Arch Linux package: the layout of the project's Makefile (make install DESTDIR=…); the ryzen_smu
 # module is built by DKMS through its pacman hook (install linux-headers for your kernel).
-pkgname=ryzen-control
-pkgver=0.8.0
+pkgname=silicon-control
+pkgver=0.1.0
 pkgrel=1
-pkgdesc="Ryzen Master-style control for AMD Ryzen CPUs: Curve Optimizer, PBO limits, boost, fans"
+pkgdesc="Power limits, boost, undervolt and fans of the CPU, calibrated per chip (AMD Ryzen so far)"
 arch=('any')
-url="https://github.com/SenseiKiritof/Ryzen-Control"
+url="https://github.com/SenseiKiritof/Silicon-Control"
 license=('GPL-3.0-or-later' 'GPL-2.0-only')
 depends=('python>=3.9' 'python-gobject' 'glib2' 'gtk4' 'libadwaita>=1.5' 'pango' 'graphene' 'hicolor-icon-theme'
          'polkit' 'systemd' 'dkms')
 makedepends=('git')
+conflicts=('ryzen-control')
 optdepends=('stress-ng: load tests of the calibrations'
             'libnotify: notification at login after a crash')
-install=ryzen-control.install
+install=silicon-control.install
 source=("git+$url.git#tag=v$pkgver")
 sha256sums=('SKIP')
 
 check() {
-  cd Ryzen-Control
-  python3 ryzenctl selftest
+  cd Silicon-Control
+  python3 siliconctl selftest
 }
 
 package() {
-  cd Ryzen-Control
+  cd Silicon-Control
   make install DESTDIR="$pkgdir" PREFIX=/usr
 }

@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-"""Ryzen Control — GTK4/libadwaita GUI for ryzenctl.
+"""Silicon Control — GTK4/libadwaita GUI for siliconctl.
 
-Runs as the user. Every read and write goes through a single `pkexec ryzenctl serve` process
-(one prompt per session): the GUI validates nothing definitive, it sends and shows the ryzenctl
+Runs as the user. Every read and write goes through a single `pkexec siliconctl serve` process
+(one prompt per session): the GUI validates nothing definitive, it sends and shows the siliconctl
 errors as they arrive. No hardware constants here: the ranges come from `status.caps`.
-`--mock`: starts `ryzenctl serve` on the fake backend (RYZENCTL_ROOT), without driver or root.
+`--mock`: starts `siliconctl serve` on the fake backend (SILICONCTL_ROOT), without driver or root.
 """
 import collections
 import gettext
@@ -30,24 +30,24 @@ gi.require_version("Pango", "1.0")
 gi.require_version("Graphene", "1.0")
 from gi.repository import Pango, Adw, Gdk, Gio, GLib, Graphene, Gtk  # noqa: E402
 
-# User interface in the system language (po/ryzen-control/<lang>.po, installed as ryzen-control.mo);
+# User interface in the system language (po/silicon-control/<lang>.po, installed as silicon-control.mo);
 # the English source strings are the fallback. Numbers follow the locale's decimal separator (num()).
-_T = gettext.translation("ryzen-control", localedir=os.environ.get("RYZEN_CONTROL_LOCALEDIR"), fallback=True)
+_T = gettext.translation("silicon-control", localedir=os.environ.get("SILICON_CONTROL_LOCALEDIR"), fallback=True)
 _ = _T.gettext
 try:
     locale.setlocale(locale.LC_NUMERIC, "")
 except locale.Error:
     pass
 
-APP_ID = "org.ryzencontrol.RyzenControl"
-DEV_RYZENCTL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ryzenctl")
-RYZENCTL = DEV_RYZENCTL if os.path.exists(DEV_RYZENCTL) else "/usr/bin/ryzenctl"
-# --mock keeps everything in the fake root: RYZENCTL_ROOT from outside (a fresh one in make screenshots), otherwise one per session.
-MOCK_DIR = os.environ.get("RYZENCTL_ROOT") or os.path.join(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir(), "ryzen-control-mock")
-# The user's XDG autostart entry for "Start Ryzen Control at login"; in --mock it stays in the mock directory.
+APP_ID = "io.github.senseikiritof.SiliconControl"
+DEV_SILICONCTL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "siliconctl")
+SILICONCTL = DEV_SILICONCTL if os.path.exists(DEV_SILICONCTL) else "/usr/bin/siliconctl"
+# --mock keeps everything in the fake root: SILICONCTL_ROOT from outside (a fresh one in make screenshots), otherwise one per session.
+MOCK_DIR = os.environ.get("SILICONCTL_ROOT") or os.path.join(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir(), "silicon-control-mock")
+# The user's XDG autostart entry for "Start Silicon Control at login"; in --mock it stays in the mock directory.
 LOGIN_DESKTOP = os.path.join(MOCK_DIR if "--mock" in sys.argv else os.path.join(GLib.get_user_config_dir(), "autostart"), APP_ID + ".desktop")
-# Per-user GUI preferences (ui_load/ui_save), not ryzenctl's root settings; in --mock in the mock directory.
-UI_FILE = os.path.join(MOCK_DIR if "--mock" in sys.argv else os.path.join(GLib.get_user_config_dir(), "ryzen-control"), "ui.json")
+# Per-user GUI preferences (ui_load/ui_save), not siliconctl's root settings; in --mock in the mock directory.
+UI_FILE = os.path.join(MOCK_DIR if "--mock" in sys.argv else os.path.join(GLib.get_user_config_dir(), "silicon-control"), "ui.json")
 POWER = ("power-saver", "balanced", "performance")
 PRESETS = ("quiet", "performance", "eco", "auto", "boost")
 CALIBRATED = ("eco", "auto", "boost")   # adapt to the hardware with load tests; the others are fixed presets
@@ -77,12 +77,12 @@ CPU_HELP = _("PPT: maximum package power (on APUs fast/slow PPT: short-term and 
 CO_HELP = (_("CO (Curve Optimizer): ") + CO_TIP.split(": ", 1)[-1] + _(" Drag the slider or type the number, then \"Apply now\". "
            "The Curve Shaper is experimental on this platform: set it from the BIOS."))
 UNLOCK_WARNING = _("PPT, TDC and EDC will be allowed beyond the stock values and FMax beyond the baseline "
-                   "(up to the ryzenctl unlock ceilings). More heat and power draw, possible sudden reboots: "
+                   "(up to the siliconctl unlock ceilings). More heat and power draw, possible sudden reboots: "
                    "save your work. Tjmax stays limited to the baseline anyway.")
 TRUST_WARNING = _("A polkit rule is written that authorises your user, in the active local session, to start "
-                  "\"ryzenctl serve\" without a password: it only covers Ryzen Control, it is not a generic sudo. In exchange, any "
+                  "\"siliconctl serve\" without a password: it only covers Silicon Control, it is not a generic sudo. In exchange, any "
                   "program run as your user will be able to change limits, Curve Optimizer and fans without asking you anything "
-                  "(always within the ryzenctl ceilings). It can be disabled from here at any time.")
+                  "(always within the siliconctl ceilings). It can be disabled from here at any time.")
 AUTODETECT_WARNING = _("Every channel with rpm > 0 is brought to a reduced PWM for about 30 seconds under load "
                        "(stress-ng), with Tctl monitored: a pump is recognised by the rise in temperature. "
                        "Duration: about 30 s per channel. At the end the channels go back to how they were.")
@@ -109,7 +109,7 @@ AT_SINGLE_SUB = _("One thread alone on each core, from idle to the highest boost
                   "loads miss. A core that fails is raised alone. Adds %s")
 WD_TIP = _("During a calibration or a verification the motherboard watchdog is handed to systemd: if the PC freezes, it restarts "
            "by itself after the timeout and the run resumes from where it was, with that step recorded as unstable. If only "
-           "Ryzen Control closes or crashes, nothing restarts: the step counts as a crash when it opens again.")
+           "Silicon Control closes or crashes, nothing restarts: the step counts as a crash when it opens again.")
 VERIFY_TEXT = _("The saved profile is applied, then every core is tested alone (one thread, from idle to the highest boost) and "
                 "then all cores together, over and over until the time is up; CO and limits are never changed during the run. "
                 "A core that fails is reported and the proposal raises only that core (+3, less negative). An unstable CO can "
@@ -117,8 +117,8 @@ VERIFY_TEXT = _("The saved profile is applied, then every core is tested alone (
 VERIFY_DURATIONS = ((30, _("30 min")), (60, _("1 h")), (180, _("3 h")), (480, _("8 h")))
 AT_PHASES = {"co": 0.6, "final": 0.7, "ppt": 0.85, "fmax_knee": 1.0, "bench": 1.0}   # share of the bar at the end of the phase
 ROLE_CSS = {"ventola": "success", "pompa": "accent"}
-# ryzenctl protocol values shown to the user (fan roles, why a CO level failed) through a translated name;
-# anything not listed is shown raw (free-text reasons arrive already translated from ryzenctl).
+# siliconctl protocol values shown to the user (fan roles, why a CO level failed) through a translated name;
+# anything not listed is shown raw (free-text reasons arrive already translated from siliconctl).
 ROLE_NAMES = {"ventola": _("fan"), "pompa": _("pump"), "sconosciuto": _("unknown"), "non-controllabile": _("not controllable")}
 WHY_NAMES = {"crash": _("crash"), "instabile": _("unstable"), "simulato": _("simulated")}
 AT_PHASE_NAMES = {"co": _("CO search"), "final": _("final pass"), "ppt": _("PPT knee"), "fmax_knee": _("FMax knee"),
@@ -138,17 +138,17 @@ class HelperError(Exception):
 
 
 class Helper:
-    """A single `ryzenctl serve` process; serialised calls. `call` blocks: use it through `bg`."""
+    """A single `siliconctl serve` process; serialised calls. `call` blocks: use it through `bg`."""
 
     def __init__(self, mock):
         env = dict(os.environ)
         if mock:
             os.makedirs(MOCK_DIR, exist_ok=True)
-            env["RYZENCTL_ROOT"] = MOCK_DIR
-            subprocess.run([RYZENCTL, "boot"], env=env, check=False, stdout=subprocess.DEVNULL)   # the baseline of the fake "boot"
-            cmd = [RYZENCTL, "serve"]
+            env["SILICONCTL_ROOT"] = MOCK_DIR
+            subprocess.run([SILICONCTL, "boot"], env=env, check=False, stdout=subprocess.DEVNULL)   # the baseline of the fake "boot"
+            cmd = [SILICONCTL, "serve"]
         else:
-            cmd = ["pkexec", RYZENCTL, "serve"]
+            cmd = ["pkexec", SILICONCTL, "serve"]
         self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, env=env, text=True, bufsize=1)
         self.lock = threading.Lock()
         self.pending = collections.deque()      # pending requests, in order: serve answers in order
@@ -181,7 +181,7 @@ class Helper:
         ev.wait()
         line = slot.get("line", "")
         if not line:
-            raise HelperError(_("ryzenctl serve is not responding (pkexec denied or process terminated): restart the application"))
+            raise HelperError(_("siliconctl serve is not responding (pkexec denied or process terminated): restart the application"))
         r = json.loads(line)
         if not r.get("ok"):
             raise HelperError(r.get("error", _("unknown error")))
@@ -253,7 +253,7 @@ def mhz(v):
 
 
 def laptop_notes(rp):
-    """The notes of a laptop (Monitor, tray tooltip) from ryzenctl's re-apply state (status, telemetry, or its file in
+    """The notes of a laptop (Monitor, tray tooltip) from siliconctl's re-apply state (status, telemetry, or its file in
     /run): the profile's limits held on the other power source, re-applying stopped."""
     rp, notes = rp or {}, []
     if rp.get("held"):
@@ -320,7 +320,7 @@ def pct_pwm(pct):
 
 
 def curve_points(tokens):
-    """['60:51', '75:255'] (or the string) → [(60, 51), (75, 255)]; invalid tokens ignored (ryzenctl validates them)."""
+    """['60:51', '75:255'] (or the string) → [(60, 51), (75, 255)]; invalid tokens ignored (siliconctl validates them)."""
     out = []
     for tok in (tokens.split() if isinstance(tokens, str) else tokens):
         try:
@@ -447,7 +447,7 @@ def values_of(lines, cores):
             elif len(t) == 2:
                 v[t[0]] = int(t[1])
         except (ValueError, IndexError):
-            pass   # unrecognised line: ryzenctl validates it, here it is only shown
+            pass   # unrecognised line: siliconctl validates it, here it is only shown
     return v
 
 
@@ -586,7 +586,7 @@ class Param(Gtk.Box):
 
 class CurveEditor(Gtk.Box):
     """Fan curve in °C → % with estimated rpm and a graph; the profile stays `t:pwm` 0–255 (conversion here,
-    validation in ryzenctl: rising temperatures, non-decreasing pwm, minimum 20 %, last one 100 % within 125 °C)."""
+    validation in siliconctl: rising temperatures, non-decreasing pwm, minimum 20 %, last one 100 % within 125 °C)."""
     T_LO, T_HI, PCT_LO, PCT_HI = 20, 125, 20, 100   # editor range
 
     def __init__(self, read, max_points, rpm_max):
@@ -935,7 +935,7 @@ class AutotuneDialog(Adw.Window):
         self.connect("close-request", self.on_close_request)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
         self.header = label("", ["dim-label"], wrap=True)
-        # one line, allocated from the start (constant height): the hardware watchdog state reported by ryzenctl serve
+        # one line, allocated from the start (constant height): the hardware watchdog state reported by siliconctl serve
         self.watchdog = label(" ", ["dim-label", "caption"], ellipsize=Pango.EllipsizeMode.END, single_line_mode=True, tooltip_text=WD_TIP)
         self.reuse = label("", ["dim-label"], wrap=True, visible=False)
         # constant heights: every height change moves the table and the compositor leaves fragments
@@ -1076,7 +1076,7 @@ class AutotuneDialog(Adw.Window):
                 self.phase.set_text(_("Verifying all cores together (iteration %d of %d)…") % it)
             frac = ((it[0] - 1) * (n + 1) + min(c, n)) / float(max(1, it[1] * (n + 1)))
         elif ph == "co" and st.get("parallel"):
-            levels = max(1, (-(p.get("colimit") or -5)) // 5)      # levels of 5 (CO_STEP), like at_estimate in ryzenctl
+            levels = max(1, (-(p.get("colimit") or -5)) // 5)      # levels of 5 (CO_STEP), like at_estimate in siliconctl
             self.phase.set_text(_("CO level %d: testing all cores together (still under test: %d cores)…") % (st["value"], len(st.get("active_cores", []))))
             frac = AT_PHASES["co"] * max(0, (-st["value"]) // 5 - 1) / levels
         elif ph == "co":
@@ -1151,7 +1151,7 @@ class AutotuneDialog(Adw.Window):
             else:
                 text = _("Final pass failed at CO %s (%s): +3 on every core and a new attempt") % (self.co_span(f.get("values") or [0]), WHY_NAMES.get(why, why))
             self.failures.append(label(text, ["warning"], wrap=True))
-        slope = st.get("mv_per_step")          # median of the slopes per level, computed by ryzenctl
+        slope = st.get("mv_per_step")          # median of the slopes per level, computed by siliconctl
         self.slope.set_visible(slope is not None)
         if slope is not None:
             self.slope.set_text(_("Measured on this CPU: ≈ %s mV per CO step") % locale.format_string("%g", round(slope, 1)))
@@ -1166,7 +1166,7 @@ class AutotuneDialog(Adw.Window):
 
     @staticmethod
     def final_values(st, cores):
-        """CO of the final pass: measured limit + margin (computed by ryzenctl: mode, failed passes, crash) + the
+        """CO of the final pass: measured limit + margin (computed by siliconctl: mode, failed passes, crash) + the
         extra margin of the cores that failed alone in the single-core test (core_margin)."""
         m = st.get("final_margin", st.get("params", {}).get("margin", 0) + 3 * st.get("final_tries", 0))
         cm = st.get("core_margin") or {}
@@ -1178,7 +1178,7 @@ class AutotuneDialog(Adw.Window):
 
     @staticmethod
     def load_method(st):
-        """stress-ng method chosen by ryzenctl as the heaviest on this CPU (Auto: knee.method, Boost: method)."""
+        """stress-ng method chosen by siliconctl as the heaviest on this CPU (Auto: knee.method, Boost: method)."""
         return (st.get("knee") or {}).get("method") or st.get("method")
 
     def load_text(self, st):
@@ -1399,7 +1399,7 @@ class ModesPage(Gtk.ScrolledWindow):
 
     def lock_calibrated(self, st):
         """The calibrated modes measure the per-core CO (none on Ryzen 1000–3000); Boost also needs unlock
-        (ryzenctl refuses both). Radio and buttons insensitive, row dimmed, the reason in the tooltip of the
+        (siliconctl refuses both). Radio and buttons insensitive, row dimmed, the reason in the tooltip of the
         row, which stays sensitive: GTK 4 hides a tooltip owned by an insensitive widget at the first pointer
         motion. The buttons' own tooltips are off meanwhile, so they do not cover the row's."""
         no_co = st.get("co_unavailable")
@@ -1457,7 +1457,7 @@ class ModesPage(Gtk.ScrolledWindow):
             if regen:
                 exists = key in shown
                 regen.set_visible(exists)
-                if key in self.verify_btns:   # ryzenctl verifies only where the per-core CO is usable
+                if key in self.verify_btns:   # siliconctl verifies only where the per-core CO is usable
                     self.verify_btns[key].set_visible(exists and st.get("co") is not None)
                 row.set_subtitle(sub if exists else sub + _(" — profile not created yet: tick to create it"))
                 if key in self.tables:
@@ -1496,7 +1496,7 @@ class ModesPage(Gtk.ScrolledWindow):
             bg(lambda: self.win.h.call("preset", key, "show"), ask, lambda m: (self.win.toast(m), self.win.reload()))
 
     def calibrate(self, mode, name=None, retry=0):
-        """First the estimate (`autotune estimate`), then a simple choice: automatic with the ryzenctl defaults, or the parameters by hand.
+        """First the estimate (`autotune estimate`), then a simple choice: automatic with the siliconctl defaults, or the parameters by hand.
         name: a custom calibration from the base `mode`, saved under that name; retry: it ignores the crash of the reused measurement."""
         def ask(est):
             p = est["params"]
@@ -1538,7 +1538,7 @@ class ModesPage(Gtk.ScrolledWindow):
         bg(lambda: self.win.h.call("autotune", "estimate", mode, *(["retry=1"] if retry else [])), ask, self.win.toast)
 
     def calibrate_params(self, mode, est, name=None):
-        """Parameters (ranges from AT_PARAMS, defaults from ryzenctl) with an estimate that follows the changes → autotune start → progress."""
+        """Parameters (ranges from AT_PARAMS, defaults from siliconctl) with an estimate that follows the changes → autotune start → progress."""
         group = Adw.PreferencesGroup()
         spins = {}
         for key, title, unit, (lo, hi), sub in AT_PARAMS:
@@ -1708,7 +1708,7 @@ class PrefsPage(Adw.PreferencesPage):
         self.loading = False
         self.autostart = Adw.SwitchRow(title=_("Apply at startup"), subtitle=_("Re-applies the selected profile at boot and on resume"))
         self.autostart.connect("notify::active", self.on_autostart)
-        self.login = Adw.SwitchRow(title=_("Start Ryzen Control at login"), active=os.path.exists(LOGIN_DESKTOP),
+        self.login = Adw.SwitchRow(title=_("Start Silicon Control at login"), active=os.path.exists(LOGIN_DESKTOP),
                                    subtitle=_("Opens the window at every login, or only the tray icon with \"Start minimized\" (the password is "
                                               "asked at the first use, unless \"Stop asking for the password\" is on). After a crash it shows the "
                                               "warning and leaves the profile deactivated: it never re-applies anything on its own"))
@@ -1724,7 +1724,7 @@ class PrefsPage(Adw.PreferencesPage):
                                                   "opens too"))
         self.minimized.connect("notify::active", self.on_minimized)
         self.trust = Adw.SwitchRow(title=_("Stop asking for the password"),
-                                   subtitle=_("Polkit rule for your user, only for Ryzen Control in the local session: "
+                                   subtitle=_("Polkit rule for your user, only for Silicon Control in the local session: "
                                               "the password is needed once to write it, then never again"))
         self.trust.connect("notify::active", self.on_trust)
         self.unlock = Adw.SwitchRow(title=_("Allow beyond the stock values"), subtitle=_("PPT/TDC/EDC up to the unlock ceilings, FMax above the baseline"))
@@ -1757,7 +1757,7 @@ class PrefsPage(Adw.PreferencesPage):
             if row.get_active():
                 os.makedirs(os.path.dirname(LOGIN_DESKTOP), exist_ok=True)
                 with open(LOGIN_DESKTOP, "w") as f:
-                    f.write("[Desktop Entry]\nType=Application\nName=Ryzen Control\nExec=ryzen-control%s\nIcon=%s\n"
+                    f.write("[Desktop Entry]\nType=Application\nName=Silicon Control\nExec=silicon-control%s\nIcon=%s\n"
                             "Terminal=false\nX-GNOME-Autostart-enabled=true\n" % (" --tray" if self.tray.get_active() and self.minimized.get_active() else "", APP_ID))
             elif os.path.exists(LOGIN_DESKTOP):
                 os.remove(LOGIN_DESKTOP)
@@ -1846,7 +1846,7 @@ class CpuPage(Page):
                                       "lever of CPUs without FMax"), ["dim-label"], wrap=True))
         self.body.append(self.boost_row)
         self.read_boost = None
-        self.nocaps = label(_("Baseline of this boot missing: no CPU write possible (ryzenctl.service did not capture it, see `ryzenctl status`)."),
+        self.nocaps = label(_("Baseline of this boot missing: no CPU write possible (siliconctl.service did not capture it, see `siliconctl status`)."),
                             ["warning"], wrap=True, visible=False)
         self.body.append(self.nocaps)
         self.buttons()
@@ -2059,7 +2059,7 @@ class FansPage(Page):
                 lb.append(mode)
                 box.append(lb)
                 speed = Param(_("Pump"), "%", info=bool(c.get("rpm_max")), tooltip=_("Cap or fixed speed of the pump (50–100 %)"))
-                speed.setup(50, 100, pct if pct is not None else 100)   # range 50–100 % (ryzenctl rejects the rest)
+                speed.setup(50, 100, pct if pct is not None else 100)   # range 50–100 % (siliconctl rejects the rest)
                 speed.set_sensitive(kind != "auto")
                 mode.connect("notify::selected", lambda r, _p, sp=speed: sp.set_sensitive(r.get_selected() != 0))
                 if c.get("rpm_max"):   # ponytail: linear rpm estimate = rpm_max × %
@@ -2127,7 +2127,7 @@ class FansPage(Page):
 # ---- Window ----------------------------------------------------------------------------
 class Window(Adw.ApplicationWindow):
     def __init__(self, app, helper):
-        super().__init__(application=app, title="Ryzen Control", default_width=840, default_height=700)
+        super().__init__(application=app, title="Silicon Control", default_width=840, default_height=700)
         self.h = helper
         self.status = {}
         self.ui = ui_load()   # per-user preferences shared by the pages, saved with ui_save
@@ -2149,7 +2149,7 @@ class Window(Adw.ApplicationWindow):
         GLib.timeout_add_seconds(1, self.tick)
 
     def on_close(self, *_a):
-        """With the tray icon the application and its ryzenctl serve stay (no new password to reopen it)."""
+        """With the tray icon the application and its siliconctl serve stay (no new password to reopen it)."""
         app = self.get_application()
         if not app.tray and app.helper:
             app.helper.close()
@@ -2353,7 +2353,7 @@ def save_png(widget, path):
     tex.save_to_png(path)
 
 
-ROOT_DIR = MOCK_DIR if "--mock" in sys.argv else ""   # where ryzenctl keeps its files (the fake backend's root in --mock)
+ROOT_DIR = MOCK_DIR if "--mock" in sys.argv else ""   # where siliconctl keeps its files (the fake backend's root in --mock)
 
 SNI_XML = """<node>
  <interface name="org.kde.StatusNotifierItem">
@@ -2392,17 +2392,17 @@ SNI_XML = """<node>
 
 def local_state():
     """What the tray needs without root: the settings (profile, autostart, unlock, custom calibrations), the crash
-    marker, the profile names and a laptop's re-apply state, from the files ryzenctl keeps readable by everyone."""
+    marker, the profile names and a laptop's re-apply state, from the files siliconctl keeps readable by everyone."""
     def js(path):
         try:
             with open(ROOT_DIR + path) as f:
                 return json.load(f)
         except (OSError, ValueError):
             return None
-    d = ROOT_DIR + "/etc/ryzenctl/profiles"
-    return {"settings": js("/etc/ryzenctl/settings.json") or {}, "crashed": js("/var/lib/ryzenctl/crashed"),
+    d = ROOT_DIR + "/etc/siliconctl/profiles"
+    return {"settings": js("/etc/siliconctl/settings.json") or {}, "crashed": js("/var/lib/siliconctl/crashed"),
             "profiles": sorted(f[:-5] for f in os.listdir(d) if f.endswith(".conf")) if os.path.isdir(d) else [],
-            "reapply": js("/run/ryzenctl/reapply.json")}
+            "reapply": js("/run/siliconctl/reapply.json")}
 
 
 def user_tctl():
@@ -2428,7 +2428,7 @@ class Tray:
     """The icon in the system tray: a StatusNotifierItem with a com.canonical.dbusmenu menu exported on the session
     bus with Gio (no extra dependency, works on Wayland; KDE Plasma natively, GNOME with the AppIndicator
     extension). Menu and tooltip come from local_state() and k10temp: no root until an entry needs it, then the
-    application's single `ryzenctl serve` (one pkexec prompt). export=False: the menu only (smoke test)."""
+    application's single `siliconctl serve` (one pkexec prompt). export=False: the menu only (smoke test)."""
     PATH, MENU = "/StatusNotifierItem", "/MenuBar"
 
     def __init__(self, app, export=True):
@@ -2504,7 +2504,7 @@ class Tray:
             if prof or s.get("autostart") else None,   # on Default (no profile) it can still be turned off
             "checkmark", bool(s.get("autostart")))
         items.append(None)
-        add(_("Open Ryzen Control"), self.app.activate)
+        add(_("Open Silicon Control"), self.app.activate)
         add(_("Quit"), self.app.quit_all)
         return items
 
@@ -2549,7 +2549,7 @@ class Tray:
         if status != self.status:
             self.status = status
             self.emit(self.PATH, "org.kde.StatusNotifierItem", "NewStatus", GLib.Variant("(s)", (status,)))
-        h = self.app.helper   # the PPT only once ryzenctl serve runs anyway (never a prompt for a tooltip), one request at a time
+        h = self.app.helper   # the PPT only once siliconctl serve runs anyway (never a prompt for a tooltip), one request at a time
         if h and h.p.poll() is None and not self.asking:
             self.asking = True
             bg(lambda: h.call("telemetry").get("ppt"), self.got_ppt, lambda _m: self.got_ppt(None))
@@ -2559,7 +2559,7 @@ class Tray:
         self.asking, self.ppt = False, ppt
 
     def run(self, cmds):
-        """A privileged choice from the menu: the application's ryzenctl serve (the session's first one asks the
+        """A privileged choice from the menu: the application's siliconctl serve (the session's first one asks the
         password), then the tray and the window follow; an error becomes a notification."""
         def done(_r):
             self.refresh()
@@ -2568,7 +2568,7 @@ class Tray:
                 win.reload()
 
         def fail(msg):
-            n = Gio.Notification.new("Ryzen Control")
+            n = Gio.Notification.new("Silicon Control")
             n.set_body(msg)
             self.app.send_notification("tray-error", n)
             self.refresh()
@@ -2579,9 +2579,9 @@ class Tray:
     def sni_prop(self, _conn, _sender, _path, _iface, prop):
         theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
         icon = APP_ID if theme.has_icon(APP_ID) else "applications-system"
-        v = {"Category": ("s", "Hardware"), "Id": ("s", "ryzen-control"), "Title": ("s", "Ryzen Control"),
+        v = {"Category": ("s", "Hardware"), "Id": ("s", "silicon-control"), "Title": ("s", "Silicon Control"),
              "Status": ("s", self.status), "WindowId": ("i", 0), "IconName": ("s", icon), "AttentionIconName": ("s", "dialog-warning"),
-             "OverlayIconName": ("s", ""), "ToolTip": ("(sa(iiay)ss)", (icon, [], "Ryzen Control", self.tip)),
+             "OverlayIconName": ("s", ""), "ToolTip": ("(sa(iiay)ss)", (icon, [], "Silicon Control", self.tip)),
              "ItemIsMenu": ("b", False), "Menu": ("o", self.MENU)}.get(prop)
         return GLib.Variant(*v) if v else None
 
@@ -2633,7 +2633,7 @@ class App(Adw.Application):
         self.helper, self.tray, self.hidden, self.styled = None, None, tray, False   # hidden: --tray, only the icon at first
 
     def get_helper(self):
-        """The application's single `ryzenctl serve`, shared by the window and the tray; started at the first need."""
+        """The application's single `siliconctl serve`, shared by the window and the tray; started at the first need."""
         if self.helper is None or self.helper.p.poll() is not None:
             self.helper = Helper(self.mock)
         return self.helper
@@ -2667,7 +2667,7 @@ class App(Adw.Application):
                     self.set_tray(True)
                 except GLib.Error:   # no session bus: the window as usual
                     self.hidden = False
-        if self.hidden:   # --tray: only the icon until "Open Ryzen Control" (no password until then)
+        if self.hidden:   # --tray: only the icon until "Open Silicon Control" (no password until then)
             self.hidden = False
             return
         if not self.props.active_window:
@@ -2707,15 +2707,15 @@ class App(Adw.Application):
         h.call("fan", "autodetect")
         h.call("fan", "identify", "1")
         # a new fake boot: as on a real machine the fan roles exist at boot, so the baseline has the BIOS fan lines
-        run_dir = os.path.join(MOCK_DIR, "run", "ryzenctl")
+        run_dir = os.path.join(MOCK_DIR, "run", "siliconctl")
         for f in os.listdir(run_dir):
             os.remove(os.path.join(run_dir, f))
-        subprocess.run([RYZENCTL, "boot"], env=dict(os.environ, RYZENCTL_ROOT=MOCK_DIR), check=True, stdout=subprocess.DEVNULL)
+        subprocess.run([SILICONCTL, "boot"], env=dict(os.environ, SILICONCTL_ROOT=MOCK_DIR), check=True, stdout=subprocess.DEVNULL)
         for name in ("quiet", "performance"):
             h.call("preset", name)
         if win.status.get("co") is not None:   # the calibrations measure the CO: refused on CPUs without a per-core CO
             # Auto from scratch, one step at a time: a frame per step for the README GIF (assembled by `make
-            # screenshots` from $RYZENCTL_ROOT/frames), the end state as calibration.png
+            # screenshots` from $SILICONCTL_ROOT/frames), the end state as calibration.png
             frames = os.path.join(MOCK_DIR, "frames")
             os.makedirs(frames, exist_ok=True)
             dlg = AutotuneDialog(win, "auto")
@@ -2790,8 +2790,8 @@ class App(Adw.Application):
             assert not mon.laptop.get_visible(), "laptop note left on the Monitor"
             win.h.call("unlock", "on")   # needed by the Boost calibration below
             # the first Eco measures from scratch, the last one reuses the final passes just recorded: done at once;
-            # no calibration without a per-core CO (ryzenctl refuses it)
-            # Auto sweeps the PPT: not on CPUs whose PM table limits are unknown (ryzenctl refuses it)
+            # no calibration without a per-core CO (siliconctl refuses it)
+            # Auto sweeps the PPT: not on CPUs whose PM table limits are unknown (siliconctl refuses it)
             pm_limits = (win.status.get("limits") or {}).get("ppt") is not None
             for i, mode in enumerate((("eco", "auto", "boost", "eco") if pm_limits else ("eco", "boost", "eco"))
                                      if win.status.get("co") is not None else ()):
@@ -2811,7 +2811,7 @@ class App(Adw.Application):
                 dlg.closable = True
                 dlg.close()
             if win.status.get("co") is not None:
-                # the parameters: the single-core test of the final pass is on by default and sent to ryzenctl
+                # the parameters: the single-core test of the final pass is on by default and sent to siliconctl
                 d = modes.calibrate_params("eco", win.h.call("autotune", "estimate", "eco"))
                 assert d.single.get_active() and d.params()["single"] == 1 and d.single.get_subtitle(), "single-core switch"
                 d.force_close()
@@ -2900,7 +2900,7 @@ class App(Adw.Application):
             assert sent == [[["autostart", "off"]]] and find(tray.build(dict(ls, settings={})), _("Apply at startup"))["action"] is None, sent
             tray.items = items
             assert tray.layout().get_type_string() == "(u(ia{sv}av))" and "Tctl" in tray.tip, "tray: layout or tooltip"
-            state = os.path.join(ROOT_DIR, "run", "ryzenctl", "reapply.json")   # what `ryzenctl reapply` leaves on a laptop
+            state = os.path.join(ROOT_DIR, "run", "siliconctl", "reapply.json")   # what `siliconctl reapply` leaves on a laptop
             with open(state, "w") as f:
                 json.dump({"held": "ac"}, f)
             tray.refresh()
@@ -2909,7 +2909,7 @@ class App(Adw.Application):
             tray.close()
             prefs = next(p for p in win.pages if isinstance(p, PrefsPage))   # the login entry: only the icon, or the window too
             prefs.login.set_active(True)
-            for tray_on, minimized, exe in ((True, True, "ryzen-control --tray"), (True, False, "ryzen-control\n"), (False, True, "ryzen-control\n")):
+            for tray_on, minimized, exe in ((True, True, "silicon-control --tray"), (True, False, "silicon-control\n"), (False, True, "silicon-control\n")):
                 prefs.tray.set_active(tray_on)
                 prefs.minimized.set_active(minimized)
                 assert "Exec=" + exe in open(LOGIN_DESKTOP).read() and prefs.minimized.get_sensitive() == tray_on, (tray_on, minimized)
@@ -2955,7 +2955,7 @@ def main():
         i = argv.index("--screenshots")
         shots = argv[i + 1] if i + 1 < len(argv) else None
         if not mock or not shots:
-            sys.exit("usage: ryzen-control --mock --screenshots DIR")
+            sys.exit("usage: silicon-control --mock --screenshots DIR")
         os.makedirs(shots, exist_ok=True)
         del argv[i:i + 2]
     app = App(mock, smoke and mock, shots, tray)

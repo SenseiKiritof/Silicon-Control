@@ -1,0 +1,5 @@
+# Silicon Control: a laptop's firmware rewrites the CPU power limits when the AC adapter or a USB-C charger is plugged
+# or unplugged; `siliconctl reapply` writes the profile's limits again, or holds them on the other power source. The
+# service runs only while a profile with limits is applied on a laptop (its ConditionPathExists).
+# RUN and not SYSTEMD_WANTS: systemd acts on SYSTEMD_WANTS only when a device first becomes active, not at every change.
+ACTION=="change", SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_TYPE}=="Mains|USB", RUN+="/usr/bin/systemctl --no-block start siliconctl-reapply.service"

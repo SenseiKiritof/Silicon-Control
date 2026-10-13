@@ -1,14 +1,14 @@
-> **Silicon Control** is being built from Ryzen Control 0.8.0 for every CPU vendor (plan:
-> `docs/plans/2026-10-13-silicon-control.md`). Until the rename (phase 0) the rest of this README
-> describes Ryzen Control as imported.
+# Silicon Control
 
-# Ryzen Control
+Control of the processor on Linux — power limits, boost frequency, temperature limit, undervolt and fans —
+with automatic per-chip calibration and protection after a crash. Successor of Ryzen Control: so far it
+supports AMD Ryzen processors only; Intel and the other CPUs (through the kernel's generic interfaces) are
+in development (plan: `docs/plans/2026-10-13-silicon-control.md`).
 
-Ryzen Master-style control for AMD Ryzen processors on Linux (Ryzen 9000 desktop verified; Ryzen
-1000–7000 desktop and the APUs of desktops, mini PCs and laptops expected: see [Processors](#processors)):
-per-core Curve Optimizer and Curve Shaper, PPT/TDC/EDC limits (fast/slow PPT on the APUs), boost frequency
-(FMax), maximum temperature (Tjmax), power profile and motherboard fans. Profiles applied at boot with
-protection after a crash.
+On AMD Ryzen (Ryzen 9000 desktop verified; Ryzen 1000–7000 desktop and the APUs of desktops, mini PCs and
+laptops expected: see [Processors](#processors)): per-core Curve Optimizer and Curve Shaper, PPT/TDC/EDC
+limits (fast/slow PPT on the APUs), boost frequency (FMax), maximum temperature (Tjmax), power profile and
+motherboard fans, with profiles applied at boot.
 
 > **Warning.** Experimental software that talks directly to the processor's SMU.
 > Developed and tested on a single system: Ryzen 7 9800X3D, ASUS ROG STRIX X870E-H, Fedora 44.
@@ -16,21 +16,21 @@ protection after a crash.
 > negative can reboot the system (no damage, but unsaved work is lost): read "Safety" before
 > using it.
 
-Status: phases 1–7 done — `ryzenctl` helper/CLI, systemd services,
+Status: the code of Ryzen Control 0.8.0 under the new name — `siliconctl` helper/CLI, systemd services,
 driver via DKMS, RPM package, fans, GTK4 GUI, calibrations, per-family support for other Ryzen
 CPUs, system tray icon on the development system; deb and Arch packages built and install-tested in
-containers; APUs and laptops (phase 8) tested on simulated hardware only (see `docs/plans/`).
+containers; APUs and laptops tested on simulated hardware only (see `docs/plans/`).
 
 ![Modes page: presets on the left, calibrated modes on the right](docs/screenshots/modes.png)
 
 ## Processors
 
-Every family has its own SMU allowlist (`FAMILIES` at the top of `ryzenctl`, from ZenStates-Core
+Every family has its own SMU allowlist (`FAMILIES` at the top of `siliconctl`, from ZenStates-Core
 and ryzen_smu): a family that is not there is refused in full, and a function the family does not
 have is refused, its command never sent. A family is **verified** once a `hwtest` on real hardware
 has written and read back each of its functions; until then it is **expected**: same guarantees
 (values ≤ the BIOS ones, readback of every write, crash-guard), but nobody has tried it yet, and
-`ryzenctl status` and the Monitor page say so.
+`siliconctl status` and the Monitor page say so.
 
 | Processors | Family (codename) | Status | Functions |
 |---|---|---|---|
@@ -54,17 +54,17 @@ seconds and restores everything, but save your work first: it lowers the Curve O
 core by 3 steps for a moment.
 
 1. Install (below): the service loads the driver and reads the BIOS values of this boot.
-2. `sudo ryzenctl status` — the first line shows family, cores, SMU and PM table version.
-3. `sudo ryzenctl hwtest` (or Preferences → Hardware check): each command is written slightly
+2. `sudo siliconctl status` — the first line shows family, cores, SMU and PM table version.
+3. `sudo siliconctl hwtest` (or Preferences → Hardware check): each command is written slightly
    away from the BIOS value, read back and brought back; the last line is `esito ok`, or
    `esito FAILED` with `error:` on the step that failed. Functions the family does not have are
    `skipped`.
-4. Open an issue with the output of `lscpu | grep 'Model name'`, `sudo ryzenctl status` and
-   `sudo ryzenctl hwtest`.
+4. Open an issue with the output of `lscpu | grep 'Model name'`, `sudo siliconctl status` and
+   `sudo siliconctl hwtest`.
 
 A family that is not in the table is refused before any SMU command (`unsupported CPU (codename
 N…)`). Adding it needs its command IDs and PM table map from a verified source, a fake variant in
-the selftest (`RYZENCTL_FAKE_FAMILY`) and then the same `hwtest`: open an issue with the codename
+the selftest (`SILICONCTL_FAKE_FAMILY`) and then the same `hwtest`: open an issue with the codename
 (`cat /sys/kernel/ryzen_smu_drv/codename`) and the PM table version.
 
 ### Laptops
@@ -80,20 +80,20 @@ then:
   and boost and deselects the mode (the CPU values are not written).
 - A mode's power profile and boost are applied before its limits, so the platform profile change does not
   wipe them.
-- With "Apply at startup" on and a mode that changes a limit, `ryzenctl reapply` runs every 10 s
-  (`ryzenctl-reapply.timer`) and when an AC adapter or a USB-C charger is plugged or unplugged (udev rule):
+- With "Apply at startup" on and a mode that changes a limit, `siliconctl reapply` runs every 10 s
+  (`siliconctl-reapply.timer`) and when an AC adapter or a USB-C charger is plugged or unplugged (udev rule):
   the limits the firmware changed are written again, with the usual readback and crash-guard markers;
   nothing is written when nothing changed. Three corrections within two minutes mean the firmware keeps
-  overriding them: re-applying stops (Monitor, tray tooltip, `ryzenctl status`) until the mode is applied
+  overriding them: re-applying stops (Monitor, tray tooltip, `siliconctl status`) until the mode is applied
   again or the next boot. A limit set by hand, or a new save of the selected mode's profile, stops it too
   until the next apply. On a desktop or a mini PC the timer finds no flag file and starts nothing.
 
 Limits: the stock values are those of the platform profile active at boot, so Performance is capped at
 them; a mode holds fixed numbers, so one created on AC may exceed the battery's stock values and be
 refused on a boot on battery (Regenerate it there). Nobody has tried it on a real laptop yet: after a boot
-on AC and one on battery run `sudo ryzenctl hwtest`; then, with a mode applied at startup, plug and
-unplug the charger and look at `cat /run/ryzenctl/reapply.json` and
-`systemctl status ryzenctl-reapply.service`.
+on AC and one on battery run `sudo siliconctl hwtest`; then, with a mode applied at startup, plug and
+unplug the charger and look at `cat /run/siliconctl/reapply.json` and
+`systemctl status siliconctl-reapply.service`.
 
 ## Installation
 
@@ -101,7 +101,7 @@ unplug the charger and look at `cat /run/ryzenctl/reapply.json` and
 
 ```sh
 make rpm                                   # requires rpm-build, rpmdevtools, git
-sudo dnf install dist/ryzen-control-*.rpm
+sudo dnf install dist/silicon-control-*.rpm
 ```
 
 A single package that does everything by itself: it builds the `ryzen_smu` module via DKMS for
@@ -122,8 +122,8 @@ sudo reboot                                       # MOK Manager: Enroll MOK → 
 Check (all automatic, reversible, a couple of seconds):
 
 ```sh
-sudo ryzenctl status                        # BIOS values, "Baseline of this boot"
-sudo ryzenctl hwtest                        # writes and reads back every command close to the baseline, then restores it
+sudo siliconctl status                        # BIOS values, "Baseline of this boot"
+sudo siliconctl hwtest                        # writes and reads back every command close to the baseline, then restores it
 ```
 
 ### Debian / Ubuntu (deb)
@@ -131,13 +131,13 @@ sudo ryzenctl hwtest                        # writes and reads back every comman
 Debian 13 or Ubuntu 24.04 and newer (libadwaita ≥ 1.5). The `.deb` is attached to every release, or:
 
 ```sh
-make deb                                   # in a Debian container with podman → dist/ryzen-control_<version>_all.deb
-sudo apt install ./dist/ryzen-control_*_all.deb
+make deb                                   # in a Debian container with podman → dist/silicon-control_<version>_all.deb
+sudo apt install ./dist/silicon-control_*_all.deb
 ```
 
 On Debian/Ubuntu itself: `cp -r packaging/debian debian && dpkg-buildpackage -us -uc -b`. DKMS builds
 `ryzen_smu` for the installed kernels — install the kernel headers (`linux-headers-amd64` on Debian,
-`linux-headers-generic` on Ubuntu) — and the services are enabled, `ryzenctl.service` started.
+`linux-headers-generic` on Ubuntu) — and the services are enabled, `siliconctl.service` started.
 Secure Boot: Ubuntu signs DKMS modules with its own MOK key and asks to enroll it; on Debian
 `sudo mokutil --import /var/lib/dkms/mok.pub` and a reboot, as on Fedora.
 
@@ -146,9 +146,9 @@ Secure Boot: Ubuntu signs DKMS modules with its own MOK key and asks to enroll i
 The package is attached to every release, or:
 
 ```sh
-make arch                                  # in an Arch container with podman → dist/ryzen-control-<version>-1-any.pkg.tar.zst
-sudo pacman -U dist/ryzen-control-*.pkg.tar.zst
-sudo systemctl enable --now ryzenctl.service ryzenctl-resume.service ryzenctl-reapply.timer
+make arch                                  # in an Arch container with podman → dist/silicon-control-<version>-1-any.pkg.tar.zst
+sudo pacman -U dist/silicon-control-*.pkg.tar.zst
+sudo systemctl enable --now siliconctl.service siliconctl-resume.service siliconctl-reapply.timer
 ```
 
 On Arch itself `packaging/PKGBUILD` builds the GitHub tag (`makepkg -si` in `packaging/`). The DKMS
@@ -165,14 +165,14 @@ With `dkms`, the kernel headers, `python3 >= 3.9`, PyGObject, GTK 4, libadwaita 
 
 ```sh
 sudo make install && sudo make dkms
-sudo systemctl enable --now ryzenctl.service ryzenctl-resume.service ryzenctl-reapply.timer
+sudo systemctl enable --now siliconctl.service siliconctl-resume.service siliconctl-reapply.timer
 ```
 
 To remove: `sudo make uninstall`.
 
 ## Usage (GUI)
 
-Open **Ryzen Control** from the application menu (or run `ryzen-control`). The first action that
+Open **Silicon Control** from the application menu (or run `silicon-control`). The first action that
 needs root asks for the administrator password once per session; "Stop asking for the password"
 in Preferences removes even that one. The screenshots below come from the fake backend
 (`make screenshots`), so the values are illustrative.
@@ -218,21 +218,21 @@ state is remembered.
 
 **Preferences** — "Apply at startup" re-applies the selected profile at every boot and resume,
 never after a crash; choosing Default leaves it on (nothing is applied until you pick another mode), the
-crash warning's "Stay on Default" turns it off; "Start Ryzen Control at login" opens the window at every login; "Stop asking
+crash warning's "Stay on Default" turns it off; "Start Silicon Control at login" opens the window at every login; "Stop asking
 for the password" writes the polkit rule described in "Safety"; "Allow beyond the stock values"
 raises the PPT/TDC/EDC and FMax ceilings (unlock); "Hardware check" writes and reads back one
 value per command, then restores the baseline.
 
 ![Preferences page](docs/screenshots/preferences.png)
 
-**System tray** — Preferences → "Icon in the system tray" (or `ryzen-control --tray`): an icon in
+**System tray** — Preferences → "Icon in the system tray" (or `silicon-control --tray`): an icon in
 the panel, bottom right (KDE Plasma natively; on GNOME it needs the AppIndicator extension). Left
 click opens the window; the right-click menu has the modes (the active one ticked; a calibrated mode
 not calibrated yet, or Boost without the unlock, greyed out), the custom calibrations, "Apply at
-startup", "Open Ryzen Control" and "Quit"; after a crash the choice Reactivate / Stay on Default
+startup", "Open Silicon Control" and "Quit"; after a crash the choice Reactivate / Stay on Default
 comes first and the icon asks for attention. The tooltip shows Tctl (read without root) and, once
-`ryzenctl serve` runs anyway, the PPT. With the tray on, closing the window keeps the icon, and
-"Start minimized to the tray icon" (on by default) decides what "Start Ryzen Control at login" opens:
+`siliconctl serve` runs anyway, the PPT. With the tray on, closing the window keeps the icon, and
+"Start minimized to the tray icon" (on by default) decides what "Start Silicon Control at login" opens:
 only the icon — no password until you pick something from the menu, then once per session as for
 the window — or the window as well.
 
@@ -244,45 +244,45 @@ the stock state (the baseline captured at boot) with its own lines on top: whate
 the previous mode's fans or limits behind. The pump is never part of a mode.
 
 ```sh
-sudo ryzenctl status                 # current state and baseline
-sudo ryzenctl co 7 -15               # Curve Optimizer of core 7; `co all -10`; `co v0 … v7`
-sudo ryzenctl ppt 120                # limits: ppt (W), tdc (A), edc (A)
-sudo ryzenctl slow 20                # APUs: sustained (slow) and short-term (fast) PPT, W
-sudo ryzenctl fmax 5000              # maximum boost frequency (MHz)
-sudo ryzenctl tjmax 85               # maximum temperature (°C), never above the baseline
-sudo ryzenctl power balanced         # power-saver | balanced | performance
-sudo ryzenctl boost off              # Precision Boost through the kernel (cpufreq), no SMU: on | off
-sudo ryzenctl default                # everything back to the base (BIOS) values, no mode selected
-sudo ryzenctl reapply                # laptops: the limits the firmware changed, written again (the timer runs it)
-sudo ryzenctl trust on|off|status    # polkit rule: your user starts Ryzen Control without a password
-sudo ryzenctl hwtest                 # reversible test of every command with readback
+sudo siliconctl status                 # current state and baseline
+sudo siliconctl co 7 -15               # Curve Optimizer of core 7; `co all -10`; `co v0 … v7`
+sudo siliconctl ppt 120                # limits: ppt (W), tdc (A), edc (A)
+sudo siliconctl slow 20                # APUs: sustained (slow) and short-term (fast) PPT, W
+sudo siliconctl fmax 5000              # maximum boost frequency (MHz)
+sudo siliconctl tjmax 85               # maximum temperature (°C), never above the baseline
+sudo siliconctl power balanced         # power-saver | balanced | performance
+sudo siliconctl boost off              # Precision Boost through the kernel (cpufreq), no SMU: on | off
+sudo siliconctl default                # everything back to the base (BIOS) values, no mode selected
+sudo siliconctl reapply                # laptops: the limits the firmware changed, written again (the timer runs it)
+sudo siliconctl trust on|off|status    # polkit rule: your user starts Silicon Control without a password
+sudo siliconctl hwtest                 # reversible test of every command with readback
 ```
 
-Profiles (`/etc/ryzenctl/profiles/<name>.conf`, one line per command, `#` comments):
+Profiles (`/etc/siliconctl/profiles/<name>.conf`, one line per command, `#` comments):
 
 ```sh
-sudo ryzenctl profile save quiet "co all -15" "ppt 88" "tdc 75" "edc 150" "fmax 4800" "power balanced"
-sudo ryzenctl apply quiet            # apply now
-sudo ryzenctl use quiet && sudo ryzenctl autostart on     # apply at every boot and after resume
-sudo ryzenctl profile list | show quiet | delete quiet
+sudo siliconctl profile save quiet "co all -15" "ppt 88" "tdc 75" "edc 150" "fmax 4800" "power balanced"
+sudo siliconctl apply quiet            # apply now
+sudo siliconctl use quiet && sudo siliconctl autostart on     # apply at every boot and after resume
+sudo siliconctl profile list | show quiet | delete quiet
 ```
 
 Beyond the factory values (PPT up to 230 W, TDC 160 A, EDC 230 A, FMax +200 MHz) only after
-`sudo ryzenctl unlock on`, which prints a warning. Tjmax never exceeds the baseline.
+`sudo siliconctl unlock on`, which prints a warning. Tjmax never exceeds the baseline.
 
 ### Fans (motherboard, Nuvoton nct67xx chip)
 
 ```sh
-sudo ryzenctl fan enable             # loads nct6775 and makes it permanent; if the chip does not show up because of an
+sudo siliconctl fan enable             # loads nct6775 and makes it permanent; if the chip does not show up because of an
                                      # ACPI conflict it adds acpi_enforce_resources=lax (grubby) and asks for a reboot
-sudo ryzenctl fan status             # channels, rpm, pwm, step, curve, role
-sudo ryzenctl fan autodetect         # ~30 s per channel under load: assigns the roles ventola (fan) / pompa (pump) / non-controllabile
-sudo ryzenctl fan 1 step 10000 5000  # SmartFan reaction delay (ms, ramp up/ramp down): ignores short spikes
-sudo ryzenctl fan 1 curve 40:77 60:150 75:255   # temperature:pwm points (pwm >= 51, last one 255 within 125 °C)
-sudo ryzenctl fan 2 pump max 70      # pump: BIOS curve capped at 70 %; `pump 65` = fixed; `pump auto` = BIOS
-sudo ryzenctl fan identify 2         # 100 % for 5 s to physically recognise the channel
-sudo ryzenctl fan name 1 "top radiator"; sudo ryzenctl fan role 3 pompa   # by hand you can only demote
-sudo ryzenctl fan disable
+sudo siliconctl fan status             # channels, rpm, pwm, step, curve, role
+sudo siliconctl fan autodetect         # ~30 s per channel under load: assigns the roles ventola (fan) / pompa (pump) / non-controllabile
+sudo siliconctl fan 1 step 10000 5000  # SmartFan reaction delay (ms, ramp up/ramp down): ignores short spikes
+sudo siliconctl fan 1 curve 40:77 60:150 75:255   # temperature:pwm points (pwm >= 51, last one 255 within 125 °C)
+sudo siliconctl fan 2 pump max 70      # pump: BIOS curve capped at 70 %; `pump 65` = fixed; `pump auto` = BIOS
+sudo siliconctl fan identify 2         # 100 % for 5 s to physically recognise the channel
+sudo siliconctl fan name 1 "top radiator"; sudo siliconctl fan role 3 pompa   # by hand you can only demote
+sudo siliconctl fan disable
 ```
 
 Writes go only to channels classified **ventola** (fan) by `fan autodetect` (physical test:
@@ -303,17 +303,17 @@ CPU's (PBO "Enabled" on many boards: PPT 1000 W and the like), ratios of them me
 and Eco use AMD's 65 W Eco mode values (88 W / 75 A / 150 A on AM5, 88 / 60 / 90 on AM4) and Auto
 is refused with the reason (set PBO to Auto/Disabled, or Advanced with your own limits). Modes **calibrated on the hardware** with load tests
 (**Eco**, **Auto**, **Boost**): the search for the per-core CO stability limit is a single one,
-shared and saved (`/var/lib/ryzenctl/co_limits.json`, reused by later calibrations), and the three
+shared and saved (`/var/lib/siliconctl/co_limits.json`, reused by later calibrations), and the three
 modes use the same margin (+3), so the same validated undervolt.
 
 ```sh
-sudo ryzenctl preset quiet|performance|eco|auto|boost   # creates the profile from the factory values (placeholder)
-sudo ryzenctl autotune estimate eco              # estimated duration (0 s when Eco reuses a validated final pass: eco_from)
-sudo ryzenctl autotune start eco|auto|boost [name=<profile>] [target=70 colimit=-40 margin=3 step=90 parallel=1 reuse=1 fans=0|1|2 single=1 watchdog=1]
-sudo ryzenctl autotune step                      # one test at a time; repeat until phase == done
-sudo ryzenctl autotune verify auto [minutes=60]  # long stability test of a saved profile; `autotune finish` stops it keeping the result
-sudo ryzenctl autotune status | abort            # abort stops immediately, even a step in progress
-sudo ryzenctl autotune save [apply]              # at phase == done: writes the proposed profile (and applies it); abort discards it
+sudo siliconctl preset quiet|performance|eco|auto|boost   # creates the profile from the factory values (placeholder)
+sudo siliconctl autotune estimate eco              # estimated duration (0 s when Eco reuses a validated final pass: eco_from)
+sudo siliconctl autotune start eco|auto|boost [name=<profile>] [target=70 colimit=-40 margin=3 step=90 parallel=1 reuse=1 fans=0|1|2 single=1 watchdog=1]
+sudo siliconctl autotune step                      # one test at a time; repeat until phase == done
+sudo siliconctl autotune verify auto [minutes=60]  # long stability test of a saved profile; `autotune finish` stops it keeping the result
+sudo siliconctl autotune status | abort            # abort stops immediately, even a step in progress
+sudo siliconctl autotune save [apply]              # at phase == done: writes the proposed profile (and applies it); abort discards it
 ```
 
 When the calibration is over the CPU goes back to the factory values and the profile is only
@@ -363,9 +363,9 @@ level and how many mV one CO step is worth on this CPU.
   Every successful final pass is recorded in `co_limits.json` (`final_passed`): if one covers
   Eco's CO, Eco is proposed at once with no load test; with only the per-core limits it runs the
   final pass; on a fresh install (no measurement yet) the full search and the final pass.
-- **Boost** (needs `ryzenctl unlock on`, "Allow beyond the stock values" in the GUI): CO =
+- **Boost** (needs `siliconctl unlock on`, "Allow beyond the stock values" in the GUI): CO =
   limit + 3, limits at the unlock ceilings (230 W / 160 A / 230 A) and FMax +200 MHz, power at
-  maximum; measures the MT/ST gain against stock. Without the unlock ryzenctl refuses `preset`,
+  maximum; measures the MT/ST gain against stock. Without the unlock siliconctl refuses `preset`,
   `autotune start`, `use` and `apply` for boost, and `unlock off` is refused while Boost is the
   selected mode (switch mode first).
 
@@ -383,16 +383,16 @@ cores and the final pass repeated (3 attempts at most). If the search itself end
 freeze, the margin gets an extra +3: the "stable" level below the crash one was tested only for
 `step` seconds. Failed combinations stay in `co_limits.json` and later calibrations do not
 retry them. After a forced reboot the interrupted step is marked unstable as soon as
-`ryzenctl.service` starts, before any choice in the GUI (Resume or Cancel). Result on the
+`siliconctl.service` starts, before any choice in the GUI (Resume or Cancel). Result on the
 development 9800X3D: with the heaviest method in the search the per-core limit is −35 (−40 froze
 the system), and the final pass at −29 on all cores is stable; one CO step is worth ≈ 3.4 mV.
 
-**Hardware watchdog**: while a calibration or a verification runs from the GUI, `ryzenctl serve` hands
+**Hardware watchdog**: while a calibration or a verification runs from the GUI, `siliconctl serve` hands
 the motherboard watchdog (e.g. the SP5100 TCO timer) to systemd for the duration of the run
 (`RuntimeWatchdogUSec` = 60 s): PID 1 pings it as long as the system lives. On Ryzen 9000 a
 too-negative CO freezes the PC instead of rebooting it: with the watchdog the board resets by itself
 within 60 s, and the calibration resumes with that step marked unstable (proven on the development
-board). If only Ryzen Control dies or is killed, nothing resets: the step it was running counts as a
+board). If only Silicon Control dies or is killed, nothing resets: the step it was running counts as a
 crash when it starts again, the CO under test goes back to the stock value, and the watchdog it left
 with systemd is released. It is never taken if it could not be stopped again (`nowayout`), if systemd
 already drives it (`RuntimeWatchdogSec` set by you: the PC is protected anyway), if another program
@@ -402,7 +402,7 @@ holds it, or with `watchdog=0`; the calibration window shows its state.
 lost). The state is on disk: at reboot the interrupted step is marked unstable and the
 calibration resumes. Duration from scratch ~25–40 min (search and final pass, plus the knee or the
 bench); with the limits already measured ~7 min plus the knee or the bench; Eco covered by a
-recorded pass: immediate. An Eco calibration left halfway by a version before 0.4.4 (phase
+recorded pass: immediate. An Eco calibration left halfway by Ryzen Control before 0.4.4 (phase
 `fmax`) cannot be resumed: discard it.
 
 **Curve Shaper**: experimental and effectively disabled. On the 9800X3D with SMU 98.81.0 the
@@ -426,21 +426,21 @@ the BIOS.
   the driver's `smn` file — reads only, only at the fuse addresses of the CPU family — and are used
   only if they agree with the system topology; otherwise the per-core CO is refused. On Ryzen 5000
   the fuses are always read: an 8-core part can sit on the second CCD of a two-CCD package.
-- **Crash-guard**: `ryzenctl.service` writes the markers `dirty` (boot in progress) and `active`
+- **Crash-guard**: `siliconctl.service` writes the markers `dirty` (boot in progress) and `active`
   (state modified) *before* touching the SMU and removes `dirty` at clean shutdown. If both
   exist at the next boot, the system crashed: the CPU profile is **not reapplied**,
-  `/var/lib/ryzenctl/crashed` is written, a notification arrives at login (one click opens
-  Ryzen Control) and you decide (`ryzenctl crashed clear` + `autostart on` to reactivate, or stay on the BIOS values).
-  The "Start Ryzen Control at login" switch (Preferences) only adds a user XDG autostart entry
+  `/var/lib/siliconctl/crashed` is written, a notification arrives at login (one click opens
+  Silicon Control) and you decide (`siliconctl crashed clear` + `autostart on` to reactivate, or stay on the BIOS values).
+  The "Start Silicon Control at login" switch (Preferences) only adds a user XDG autostart entry
   (`~/.config/autostart/`): the window opens at login with the pkexec prompt and, after a
   crash, shows the warning with Reactivate / Stay on Default. Reapplying at boot remains the
-  exclusive job of `ryzenctl.service` (`autostart` ∧ no crash): the GUI applies nothing.
-  "Stop asking for the password" (Preferences, `ryzenctl trust on`) writes
-  `/etc/polkit-1/rules.d/50-ryzen-control.rules`: your user, in the active local session,
-  starts `pkexec ryzenctl serve` without authenticating. It applies only to this action, it is
+  exclusive job of `siliconctl.service` (`autostart` ∧ no crash): the GUI applies nothing.
+  "Stop asking for the password" (Preferences, `siliconctl trust on`) writes
+  `/etc/polkit-1/rules.d/50-silicon-control.rules`: your user, in the active local session,
+  starts `pkexec siliconctl serve` without authenticating. It applies only to this action, it is
   not a generic sudo; in exchange every program run as your user can change limits, CO and fans
-  (within ryzenctl's ceilings). `trust off` removes the rule.
-- Total escape hatch: at boot, in GRUB, press `e` and add `ryzenctl.off` to the kernel line:
+  (within siliconctl's ceilings). `trust off` removes the rule.
+- Total escape hatch: at boot, in GRUB, press `e` and add `siliconctl.off` to the kernel line:
   the service does not start and the module is not loaded (it is blacklisted, only the service
   loads it).
 - Laptops: CPU values are written only on the power source the baseline was captured on (the firmware's
@@ -451,14 +451,14 @@ the BIOS.
 ## Hardware verification (phase 1 checklist)
 
 1. `dkms status` installed; `modinfo -F signer ryzen_smu` (akmods key or enrolled DKMS key);
-   `systemctl status ryzenctl` active; `cat /sys/kernel/ryzen_smu_drv/codename` = 23.
-2. `sudo ryzenctl status` = BIOS values; `sudo ryzenctl hwtest` with result `ok` (every command
+   `systemctl status siliconctl` active; `cat /sys/kernel/ryzen_smu_drv/codename` = 23.
+2. `sudo siliconctl status` = BIOS values; `sudo siliconctl hwtest` with result `ok` (every command
    written, read back and brought back to the baseline). Result on the 9800X3D / SMU 98.81.0:
    CO, FMax, PPT, TDC, EDC, Tjmax ok; Curve Shaper not verifiable (see above).
 3. Crash-guard: harmless profile (`ppt 150`) with autostart; `sync; echo b | sudo tee
-   /proc/sysrq-trigger` → at boot `ryzenctl crashed` populated, `status` = baseline,
-   notification at login; `systemctl restart ryzenctl` → baseline unchanged; clean reboot →
-   profile applied; suspend/resume → profile still applied; boot with `ryzenctl.off` →
+   /proc/sysrq-trigger` → at boot `siliconctl crashed` populated, `status` = baseline,
+   notification at login; `systemctl restart siliconctl` → baseline unchanged; clean reboot →
+   profile applied; suspend/resume → profile still applied; boot with `siliconctl.off` →
    module not loaded.
 
 ## Development
@@ -468,15 +468,16 @@ make check          # selftest (fake backend), layout, systemd units, desktop, m
 make driver-check   # builds the driver in a temporary copy (kbuild does not accept spaces in the path)
 make rpm            # tarball from HEAD + RPM in dist/
 make screenshots    # README screenshots: the GUI on a fresh fake backend (needs a display)
-RYZENCTL_ROOT=/tmp/fake python3 ryzenctl boot   # CLI on the fake backend, no root
+SILICONCTL_ROOT=/tmp/fake python3 siliconctl boot   # CLI on the fake backend, no root
 ```
 
-Plan, architecture and work status: `docs/plans/2026-10-09-ryzen-control.md`.
+Plan, architecture and work status: `docs/plans/2026-10-13-silicon-control.md`; the history of the Ryzen Control
+code: `docs/plans/2026-10-09-ryzen-control.md`.
 
 ## Language
 
 The UI follows the system locale (gettext), Italian included. To add a translation, create
-`po/<domain>/<lang>.po` for the domains `ryzenctl` (helper/CLI) and `ryzen-control` (GUI);
+`po/<domain>/<lang>.po` for the domains `siliconctl` (helper/CLI) and `silicon-control` (GUI);
 the catalogs are compiled at install by `make`.
 
 ## License

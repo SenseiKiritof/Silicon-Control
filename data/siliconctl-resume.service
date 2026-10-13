@@ -1,11 +1,11 @@
 [Unit]
-Description=Ryzen Control: reapplies the profile after resume (S3 returns the SMU to the BIOS values)
+Description=Silicon Control: reapplies the profile after resume (S3 returns the SMU to the BIOS values)
 After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
-ConditionKernelCommandLine=!ryzenctl.off
+ConditionKernelCommandLine=!siliconctl.off
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/ryzenctl resume
+ExecStart=/usr/bin/siliconctl resume
 
 [Install]
 WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target

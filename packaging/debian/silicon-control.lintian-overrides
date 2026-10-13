@@ -1,0 +1,4 @@
+# siliconctl-resume.service re-applies the profile after a suspend or hibernation: the sleep targets on purpose
+silicon-control: systemd-service-file-refers-to-unusual-wantedby-target *
+# usage in the README and in `siliconctl` without arguments; no man pages yet
+silicon-control: no-manual-page *

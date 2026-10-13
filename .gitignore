@@ -40,7 +40,7 @@ packaging/debian/files
 packaging/debian/*.substvars
 packaging/debian/*.debhelper.log
 packaging/debian/tmp/
-packaging/debian/ryzen-control/
+packaging/debian/silicon-control/
 packaging/debian/ryzen-smu-dkms/
 
 # packaging/debian copied to the root to build on Debian/Ubuntu itself
