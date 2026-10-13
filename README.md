@@ -20,7 +20,8 @@ Status: the code of Ryzen Control 0.8.0 under the new name — `siliconctl` help
 driver via DKMS, RPM package, fans, GTK4 GUI, calibrations, per-family support for other Ryzen
 CPUs, system tray icon on the development system; deb and Arch packages built and install-tested in
 containers; APUs and laptops tested on simulated hardware only (see `docs/plans/`). Since 0.2.0 the generic
-backend serves every other CPU (verified on the 9800X3D with `siliconctl.generic`).
+backend serves every other CPU (verified on the 9800X3D with `siliconctl.generic`); since 0.3.0 the Intel backend
+(power limits, temperature limit, turbo; simulated hardware only).
 
 ![Modes page: presets on the left, calibrated modes on the right](docs/screenshots/modes.png)
 
