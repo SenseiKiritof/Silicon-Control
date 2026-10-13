@@ -17,10 +17,10 @@ git init -q
 git add -A
 git -c user.email=build@localhost -c user.name=build commit -qm "v$v"
 git tag "v$v"
-cp packaging/PKGBUILD packaging/ryzen-control.install "$pkg"/
-sed -i "s|^source=.*|source=(\"Ryzen-Control::git+file://$snap#tag=v\$pkgver\")|" "$pkg"/PKGBUILD
+cp packaging/PKGBUILD packaging/silicon-control.install "$pkg"/
+sed -i "s|^source=.*|source=(\"Silicon-Control::git+file://$snap#tag=v\$pkgver\")|" "$pkg"/PKGBUILD
 chown -R builder /home/builder
 cd "$pkg"
 su builder -c "makepkg --noconfirm"
-namcap PKGBUILD ryzen-control-*.pkg.tar.zst
-mkdir -p "$out" && cp ryzen-control-*.pkg.tar.zst "$out"/
+namcap PKGBUILD silicon-control-*.pkg.tar.zst
+mkdir -p "$out" && cp silicon-control-*.pkg.tar.zst "$out"/

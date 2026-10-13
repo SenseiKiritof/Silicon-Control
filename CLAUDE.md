@@ -17,16 +17,19 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
 
 ## Status (2026-10-13)
 
-- The first commit imported Ryzen Control v0.8.0 (commit 97152b0 of `../Ryzen Control`) unchanged: the code
-  is AMD only and still uses the old names (`ryzenctl`, `ryzen-control`, `org.ryzencontrol.RyzenControl`,
-  `/etc/ryzenctl`, `/var/lib/ryzenctl`, `/run/ryzenctl`, `ryzenctl.off`, gettext domains `ryzenctl` and
-  `ryzen-control`). The sections "Inherited from Ryzen Control" below describe that code as it is.
+- The first commit imported Ryzen Control v0.8.0 (commit 97152b0 of `../Ryzen Control`) unchanged; phase 0,
+  step 1 renamed it (`ryzenctl` → `siliconctl`, `ryzen-control` → `silicon-control`, `org.ryzencontrol.RyzenControl`
+  → `io.github.senseikiritof.SiliconControl`, `/etc|/var/lib|/run/siliconctl`, `siliconctl.off`, `SILICONCTL_ROOT`,
+  gettext domains `siliconctl` and `silicon-control`, version 0.1.0). Still AMD only: the sections "Inherited
+  from Ryzen Control" below describe that code.
 - Its history is not in this repository: the commit messages that explain the code and its hardware lessons
   are in `../Ryzen Control` (`git -C "../Ryzen Control" log -S'<text>'` or `log -L` when the reason for a line
   is unclear; `../Ryzen Control/CLAUDE.md` has the phase-by-phase history).
-- Nothing of the Silicon Control plan is done yet. Start by confirming the open decisions of the plan with the
-  user, then phase 0, step 1 (the rename).
-- No git remote yet: the user creates the GitHub repository when ready.
+- The open decisions are confirmed (plan revision 2: version 0.1.0, Ryzen Control superseded, AMD + Intel +
+  generic, no Intel hardware, Italian protocol keys kept).
+- Phase 0 done: the rename (step 1) and the takeover of Ryzen Control (step 2), installed by the user over Ryzen
+  Control 0.8.0 on the 9800X3D. Next: phase 1, step 3 (vendor backends and capabilities, AMD unchanged).
+- No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
 
@@ -54,8 +57,8 @@ over here, so they live in this file):
   hardware invariants below. In doubt, refuse the write (fail closed) and explain why.
 - The user's machine is the only test hardware: AMD Ryzen 7 9800X3D (Granite Ridge), ASUS ROG STRIX X870E-H,
   Fedora 44, KDE Plasma Wayland, Secure Boot on (the akmods MOK key is enrolled), NCT6799D fan chip, AIO with
-  the pump on pwm2. Ryzen Control 0.8.0 is installed and in use there, with calibrated profiles (custom
-  `new-auto`): Silicon Control must take them over (plan, phase 0) and the two must never run together.
+  the pump on pwm2. Silicon Control replaced Ryzen Control 0.8.0 there (phase 0) and took over its calibrated
+  profiles (custom `new-auto`); the two must never run together.
 - Large independent work (research, a backend) can go to subagents in worktrees; review their commits with
   the safety rules first, then merge; README, CLAUDE.md and the plan are updated by the main session.
 
@@ -83,15 +86,16 @@ button can wipe the files written in the last seconds (btrfs): even freshly crea
 A separate Eco calibration (FMax sweep for a Tctl target, margin +5) turned out redundant with
 Auto's undervolt: Eco now reuses the validated CO and the FMax sweep is gone.
 
-## Inherited from Ryzen Control (the imported code, old names)
+## Inherited from Ryzen Control (the imported code, under the new names)
 
-Accurate for the code as imported; update these sections as the plan's steps change it.
+Accurate for the code as imported and renamed (phase 0, step 1); update these sections as the plan's steps change it. Phase numbers in
+them are Ryzen Control's, not this plan's.
 
 ### Layout
 
-- `ryzenctl` — Python stdlib, the only privileged entry point (CLI, `serve`, `selftest`).
-- `ryzen-control` — Python/PyGObject GUI (GTK4, libadwaita ≥ 1.5), runs as the user; a single
-  `pkexec ryzenctl serve` process per session (Helper with reader + FIFO: requests are sent
+- `siliconctl` — Python stdlib, the only privileged entry point (CLI, `serve`, `selftest`).
+- `silicon-control` — Python/PyGObject GUI (GTK4, libadwaita ≥ 1.5), runs as the user; a single
+  `pkexec siliconctl serve` process per session (Helper with reader + FIFO: requests are sent
   without waiting for the previous ones, replies arrive in order); `--mock` uses the fake backend
   with a separate app id (`…Mock`) so as not to activate the installed instance.
 - `ryzen_smu/` — upstream driver (amkillam/ryzen_smu, commit d298366) **copied**, not a subtree
@@ -99,16 +103,17 @@ Accurate for the code as imported; update these sections as the plan's steps cha
   0x6211xx/0x6212xx) and update procedure in `ryzen_smu/UPSTREAM.md`.
 - `Makefile` — the only source of the installed layout (`install` = `install-cli` + `install-gui`
   if present + `install-dkms-src`; `DESTDIR`, `PREFIX`; `APPID` is only used for the file names in
-  `data/`, the id `org.ryzencontrol.RyzenControl` is written inside the files). Every package is
+  `data/`, the id `io.github.senseikiritof.SiliconControl` is written inside the files). Every package is
   a wrapper that calls the Makefile, never a duplicated layout.
-- `data/` — systemd units (`ryzenctl.service`, `ryzenctl-resume.service`, `ryzenctl-reapply.service` +
+- `data/` — systemd units (`siliconctl.service`, `siliconctl-resume.service`, `siliconctl-reapply.service` +
   `.timer`), udev rule (laptops' AC changes), preset, modprobe blacklist, polkit policy, .desktop, icon,
   metainfo, notify autostart.
-- `packaging/ryzen-control.spec` (RPM: **a single package** `ryzen-control`, noarch, with the
-  driver's DKMS source inside; `Obsoletes: ryzen-smu-dkms` for releases 1-4). The `%post`
+- `packaging/silicon-control.spec` (RPM: **a single package** `silicon-control`, noarch, with the
+  driver's DKMS source inside; it replaces `ryzen-control`: see "Takeover" below). The `%post`
   rebuilds the module only if it is missing for the running kernel or the key changes: **when
   the source in `ryzen_smu/` changes, `DRV_VERSION`** (Makefile) **= `%drv_version`** (spec)
-  **must be bumped**, otherwise dkms keeps the old module; `VERSION` (app) does not touch the
+  **must be bumped, and `MODULE_VERSION` in `drv.c` with it**, otherwise dkms keeps the old module (or refuses an
+  equal version: see "Takeover"); `VERSION` (app) does not touch the
   module, so a release does not rebuild it. `packaging/debian/` and `packaging/PKGBUILD` (phase 7)
   are wrappers of the same make install; bump `debian/changelog` and `pkgver` with VERSION (make check
   enforces it).
@@ -121,15 +126,28 @@ dependency beyond PyGObject, no test framework.
 Without hardware or root (run before every commit):
 
 ```sh
-python3 ryzenctl selftest       # fake backend; encodings, validation, ceilings, profiles, baseline, crash-guard, serve
-make check                      # selftest + layout in a temporary root + systemd-analyze verify + desktop-file-validate + appstreamcli
+python3 siliconctl selftest     # fake backend; encodings, validation, ceilings, profiles, baseline, crash-guard, serve (~3 s)
+make check                      # VERSION match + Italian catalogs + selftest + layout in a temp root + units/udev/desktop/metainfo validation + GUI smoke en/it
 make driver-check               # builds the driver in a copy outside the repo (kbuild does NOT accept spaces in the path: `make -C ryzen_smu` fails here)
 make rpm                        # tarball from HEAD (only what is committed) + RPM in dist/; rpmlint NOT installed
 make deb / make arch            # the same tarball, .deb / Arch package built and checked in a podman container
-RYZENCTL_ROOT=/tmp/fake python3 ryzenctl boot   # CLI on the fake backend (state in $ROOT/fake_smu.json)
-python3 ryzen-control --mock    # GUI without driver or pkexec (phase 3)
+SILICONCTL_ROOT=/tmp/fake python3 siliconctl boot   # CLI on the fake backend (state in $ROOT/fake_smu.json)
+SILICONCTL_ROOT=$(mktemp -d) SILICONCTL_FAKE_FAMILY=vermeer python3 siliconctl status   # another fake CPU: a key of Fake.VARIANTS, a fresh root each
+python3 silicon-control --mock  # GUI without driver or pkexec, on the repo's siliconctl (state kept in $XDG_RUNTIME_DIR/silicon-control-mock unless SILICONCTL_ROOT)
+make locales && SILICON_CONTROL_LOCALEDIR=build/locale LANGUAGE=it python3 silicon-control --mock   # the repo's Italian catalogs (otherwise the installed ones)
 make screenshots                # docs/screenshots/*.png from a fresh fake backend (regenerate after visible UI changes)
 ```
+
+No per-case runner: `selftest` always runs everything (its main cases, then `selftest_watchdog`,
+`selftest_variants`, `selftest_laptop`) and the first failing `assert` stops it with a traceback. `make check`
+opens the GUI twice on the display (`--mock --smoke`, English and Italian, 120 s timeout each): it needs the
+graphical session. Without `SILICONCTL_ROOT`, `siliconctl` acts on the real machine, and `silicon-control` without
+`--mock` runs `pkexec` on the `siliconctl` next to it (the repo's) against the real CPU: both are the user's to run.
+
+Translations: no GNU gettext tools here (`xgettext`, `msgmerge`): a new `_()` string gets its entry in
+`po/<domain>/it.po` by hand. `po/msgfmt.py` skips untranslated and fuzzy entries silently; `po/check.py` (in
+`make check`) fails on an `it.po` that misses a `_("…")` literal of the source named after its domain, has it
+fuzzy or keeps an unused entry, and on a `_()` of a non-literal.
 
 On hardware (the user runs them, with `! command`; commit after their result): checklist in
 README "Hardware verification".
@@ -140,10 +158,10 @@ Not on this machine: `dpkg-buildpackage`, `lintian`, `namcap` (run in containers
 ### Architecture
 
 ```
-ryzen-control (GUI, user) ──pkexec──▶ ryzenctl serve (root, validates EVERYTHING)
+silicon-control (GUI, user) ──pkexec──▶ siliconctl serve (root, validates EVERYTHING)
                                         ├─ /sys/kernel/ryzen_smu_drv/*   (SMU)
-CLI: sudo ryzenctl …  ──────────────────┤─ /sys/class/hwmon/nct67xx/*    (fans, phase 2)
-systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib/ryzenctl, /run/ryzenctl
+CLI: sudo siliconctl …  ────────────────┤─ /sys/class/hwmon/nct67xx/*    (fans, phase 2)
+systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/siliconctl, /run/siliconctl
 ```
 
 - **A profile = baseline + its own lines** (`with_stock` in `profile_lines`): the stock values of
@@ -151,29 +169,40 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
   so `profile show`, `apply` and the boot always see and write a complete state.
 - **A single command grammar** (`co 7 -3`, `ppt 88`, `fmax 4800`, `shaper 4 -5 -5 0`,
   `power balanced`, …) used identically by the CLI, profile file lines and the `serve` protocol
-  (one JSON-array line per request, one `{"ok":…}` line as reply; `boot/shutdown/resume/serve`
-  denied via serve). A new command = a `cmd_*` function + an entry in `COMMANDS` (+ in
+  (one JSON-array line per request, one `{"ok":…}` line as reply; `boot/shutdown/resume/serve/selftest`
+  denied via serve, `SERVE_DENY`). A new command = a `cmd_*` function + an entry in `COMMANDS` (+ in
   `PROFILE_CMDS` if allowed in profiles) + a case in the selftest.
-- **`ryzenctl` is the trust boundary**: the GUI validates nothing definitive, it sends and shows
+- **`siliconctl` is the trust boundary**: the GUI validates nothing definitive, it sends and shows
   the errors. `serve` is started once per session (a single pkexec prompt; `trust on` writes a
   polkit rule in `/etc/polkit-1/rules.d/` for the calling user, `PKEXEC_UID`/`SUDO_USER`, and the
   prompt disappears).
-- **Fake backend** (`class Fake`, active with `RYZENCTL_ROOT`): simulates SMU, PM table, k10temp,
+- **Fake backend** (`class Fake`, active with `SILICONCTL_ROOT`): simulates SMU, PM table, k10temp,
   power profile; `drop` ignores the next writes (readback proof), `log` records which markers
   existed at every write (ordering proof). New logic = a case in the selftest.
-- **Baseline** (`/var/lib/ryzenctl/baseline.conf`, same format as profiles): captured by `boot`
-  once per boot (`/run/ryzenctl/booted`), never if `active` exists. Ceiling of every value;
-  without a baseline of this boot (`/run/ryzenctl/baseline-done`) no CPU write. Tjmax ≤ baseline
+- **Baseline** (`/var/lib/siliconctl/baseline.conf`, same format as profiles): captured by `boot`
+  once per boot (`/run/siliconctl/booted`), never if `active` exists. Ceiling of every value;
+  without a baseline of this boot (`/run/siliconctl/baseline-done`) no CPU write. Tjmax ≤ baseline
   always; PPT/TDC/EDC ≤ baseline and FMax ≤ baseline unless `unlock on` (ceilings 230 W / 160 A /
   230 A, FMax +200 MHz, warning printed).
-- **Crash-guard** (explicit user requirement), markers in `/var/lib/ryzenctl` with fsync:
+- **Crash-guard** (explicit user requirement), markers in `/var/lib/siliconctl` with fsync:
   `boot` → if `dirty` ∧ `active` writes `crashed {time, profile}`; removes `active`; writes
   `dirty`; captures the baseline; applies fans; applies CPU only if autostart ∧ ¬crashed. `active`
   is written by `write_verify` **before** the SMU write of a value ≠ baseline. `shutdown`
   (ExecStop) removes `dirty`. A restart in the same boot (`booted` present) only puts `dirty`
   back. `boot` never raises exceptions (the unit must stay active so that ExecStop runs). Escape
-  hatch: kernel parameter `ryzenctl.off` + blacklisted module (only the service loads it with an
+  hatch: kernel parameter `siliconctl.off` + blacklisted module (only the service loads it with an
   explicit modprobe).
+- **Takeover of Ryzen Control** (phase 0): `boot` first runs `import_ryzen_control`, once, while siliconctl has no
+  state of its own: `/etc/ryzenctl`, `/var/lib/ryzenctl` and, if Ryzen Control ran in this boot, `/run/ryzenctl`
+  (not its lock) copied as they are, so the boot goes on as a restart of the same service (no baseline captured over
+  the profile it applied, no false crash; after a boot it did not close, `dirty` + `active` report a crash: the
+  safe side); its polkit trust rule rewritten for the new action. `_lock` also takes `/run/ryzenctl/lock` while
+  that directory exists (a `ryzenctl serve` of its GUI may still run: the driver's `smu_args` is shared). The GUI
+  moves the login entry and copies `ui.json` at start. Units honour `ryzenctl.off`. Packages: RPM `Obsoletes` +
+  `Conflicts`, deb `Conflicts` + `Replaces`, Arch `conflicts` + `replaces`. `DRV_VERSION` stays 0.4.1: the new
+  `%post`'s `dkms add --rpm_safe_upgrade` (same module-version) cancels the `dkms remove` of ryzen-control's `%preun`,
+  as in its own upgrades. Measured: with 0.4.2 dkms refused the install (same `MODULE_VERSION` 0.1.7) and that
+  `%preun` removed the only installed copy.
 - **Modes** are static (no daemon, the dynamic behaviour is done by PBO): Default / Quiet (preset) /
   Eco (calibrated) / Auto (calibrated) / Performance (preset) / Boost (calibrated) / Custom.
   The three calibrated modes share one CO measurement and one margin (+3): Auto adds the
@@ -186,7 +215,7 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
   replaces them with measurements, but only on `autotune save [apply]`: at `phase == done` the
   CPU is at baseline and the profile is proposed in `profile_lines` (the GUI asks Cancel / Save /
   Save and apply; `abort` discards). `serve` executes the requests in order on one thread and
-  reads on another: `autotune abort` raises the flag `/run/ryzenctl/autotune-abort` and
+  reads on another: `autotune abort` raises the flag `/run/siliconctl/autotune-abort` and
   terminates the stress-ng processes registered in `_children`.
 - **Fans** (phase 2): no daemon; only `pwmN_step_up_time`/`step_down_time` (and curve points if
   requested) of the SmartFan already programmed by the BIOS are changed. Roles assigned by
@@ -197,7 +226,7 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
   curve is stored in `settings.fans[N].bios_curve` and `pump_max` is reset at every boot because
   the BIOS reprograms it), `fan N pump <50-100>` (fixed speed, manual mode) and `fan N pump auto`
   (restores); never curves or steps on the pump by hand (the BIOS drove it to 100 % under load
-  and it hummed). The kernel parameter `acpi_enforce_resources=lax` is set by `ryzenctl fan
+  and it hummed). The kernel parameter `acpi_enforce_resources=lax` is set by `siliconctl fan
   enable` (explicit user action, grubby), never by the package. The fake backend simulates the
   hwmon with real files under `$ROOT/sys/class/hwmon/hwmon0` and the physics in
   `Fake.after_fan_write`.
@@ -205,7 +234,7 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
 ### Hardware invariants (non-negotiable)
 
 - SMN: reads only, only the family's fuse addresses (`smn_read`); no SMN write, ever.
-- Strict SMU allowlist per family (`FAMILIES[codename]["cmd"]` at the top of `ryzenctl`; `smu()` never
+- Strict SMU allowlist per family (`FAMILIES[codename]["cmd"]` at the top of `siliconctl`; `smu()` never
   sends a name missing from the entry). Granite Ridge: CO MP1 0x35, PPT/TDC/EDC MP1
   0x3E/0x3C/0x3D, FMax RSMU 0x70/0x6E, Tjmax RSMU 0x59, Shaper RSMU 0xA6/0x84, CO get RSMU
   0xD5. Vermeer: CO MP1 0x35 / get MP1 0x48, PPT/TDC/EDC/Tjmax RSMU 0x53/0x54/0x55/0x56. Matisse:
@@ -239,15 +268,15 @@ systemd: ryzenctl.service, -resume ─────┘─ /etc/ryzenctl, /var/lib
   `serve` while a calibration/verification runs, never with `nowayout`, when systemd already drives it,
   when another program holds it, or with `watchdog=0`; released (property back to 0) at done, abort,
   error, end of input. A `serve` that dies leaves it with systemd (PID 1 keeps pinging: no reset); the
-  next ryzenctl releases it (`wd_cleanup`, owner pid in `/run/ryzenctl/watchdog`) and the step of a dead
+  next siliconctl releases it (`wd_cleanup`, owner pid in `/run/siliconctl/watchdog`) and the step of a dead
   process counts as a crash (`in_progress` carries the pid; same boot → baseline CPU applied first).
-- Every SMU transaction under `flock(/run/ryzenctl/lock)` (the driver's `smu_args` is global).
+- Every SMU transaction under `flock(/run/siliconctl/lock)` (the driver's `smu_args` is global).
 - Every write is followed by a readback; mismatch → one retry → restore of the baseline value →
   error. No automatic fallback to other IDs.
 - Floors: PPT ≥ 45 W, TDC ≥ 30 A, EDC ≥ 45 A (PPT 0 locks the CPU at 606 MHz). CO/Shaper −50..+30
   (CO per family: `co_range`, −30..+30 on Zen 3),
   FMax 3000..baseline(+200 unlocked), Tjmax 60..min(baseline, 95). The constants live at the top
-  of `ryzenctl` and are calibration knobs, not to be scattered around.
+  of `siliconctl` and are calibration knobs, not to be scattered around.
 - PM table values read only if `pm_table_version>>16` is the family's `pm_prefix` (0x62) or the
   version is in its `pm_versions` (Vermeer, Matisse: the versions with a checked map), per-core
   arrays (by physical slot, through `core_map`) only for a version in its `pm_cores` (0x620105); PM

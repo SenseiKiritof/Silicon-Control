@@ -1,5 +1,5 @@
 [Unit]
-Description=Ryzen Control: every 10 s, the laptop firmware's changes to the profile's power limits are undone
+Description=Silicon Control: every 10 s, the laptop firmware's changes to the profile's power limits are undone
 
 [Timer]
 OnBootSec=1min

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Silicon Control
+Comment=Power limits, boost, undervolt and fans of the processor
+Comment[it]=Limiti di potenza, boost, undervolt e ventole del processore
+Exec=silicon-control
+Icon=io.github.senseikiritof.SiliconControl
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=ryzen;cpu;undervolt;pbo;curve;fans;
+Keywords[it]=ryzen;cpu;undervolt;pbo;curve;ventole;

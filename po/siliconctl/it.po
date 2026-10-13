@@ -1,9 +1,9 @@
-# Italian translations for ryzenctl (Ryzen Control).
-# This file is distributed under the same license as Ryzen Control.
+# Italian translations for siliconctl (Silicon Control).
+# This file is distributed under the same license as Silicon Control.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: ryzenctl\n"
+"Project-Id-Version: siliconctl\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-10-10 12:00+0200\n"
 "PO-Revision-Date: 2026-10-10 12:00+0200\n"
@@ -15,146 +15,146 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ryzenctl
+#: siliconctl
 msgid " (PBO disabled in the BIOS? set it to Advanced/Motherboard)"
 msgstr " (PBO disabilitato nel BIOS? impostarlo su Advanced/Motherboard)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "SMU %s 0x%02X: %s%s"
 msgstr "SMU %s 0x%02X: %s%s"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "ryzen_smu driver not loaded (%s)"
 msgstr "driver ryzen_smu non caricato (%s)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "unsupported CPU (codename %d; supported: %s)"
 msgstr "CPU non supportata (codename %d; supportate: %s)"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: baseline [show]"
 msgstr "uso: baseline [show]"
 
-#: ryzenctl
+#: siliconctl
 msgid "baseline not captured: CPU state already modified in this boot"
 msgstr "baseline non catturata: stato CPU già modificato in questo boot"
 
-#: ryzenctl
-msgid "baseline missing: CPU writes refused (did the ryzenctl service run?)"
-msgstr "baseline assente: scritture CPU rifiutate (il servizio ryzenctl non ha girato?)"
+#: siliconctl
+msgid "baseline missing: CPU writes refused (did the siliconctl service run?)"
+msgstr "baseline assente: scritture CPU rifiutate (il servizio siliconctl non ha girato?)"
 
-#: ryzenctl
+#: siliconctl
 msgid "baseline not captured in this boot: CPU writes refused"
 msgstr "baseline non catturata in questo boot: scritture CPU rifiutate"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "no baseline for %s (PM table missing?): write refused"
 msgstr "nessuna baseline per %s (PM table assente?): scrittura rifiutata"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "%s %d%s out of range (allowed %d..%d%s)"
 msgstr "%s %d%s fuori dal consentito %d..%d%s"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "%s: '%s' is not an integer"
 msgstr "%s: '%s' non è un intero"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "%s: wrote %s but read back %s; restored %s"
 msgstr "%s: scritto %s ma riletto %s; ripristinato %s"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "usage: %s <%s>"
 msgstr "uso: %s <%s>"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "PM table missing: cannot verify %s, write refused"
 msgstr "PM table assente: impossibile verificare %s, scrittura rifiutata"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "usage: co <core|all> <value> | co v0 … v%d"
 msgstr "uso: co <core|all> <valore> | co v0 … v%d"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: fmax <MHz>"
 msgstr "uso: fmax <MHz>"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: shaper <tier 0-4> <lowT> <midT> <highT> | shaper raw | shaper probe"
 msgstr "uso: shaper <tier 0-4> <bassaT> <mediaT> <altaT> | shaper raw | shaper probe"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "usage: power <%s>"
 msgstr "uso: power <%s>"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: unlock on|off"
 msgstr "uso: unlock on|off"
 
-#: ryzenctl
+#: siliconctl
 msgid "Boost is the selected mode and requires unlock: switch to another mode first"
 msgstr "Boost è la modalità selezionata e richiede lo sblocco: passare prima a un'altra modalità"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "WARNING: limits beyond the factory values enabled (PPT up to %d W, TDC %d A, EDC %d A, FMax +%d MHz). More heat and power draw; Tjmax stays <= baseline anyway."
 msgstr "ATTENZIONE: limiti oltre i valori di fabbrica abilitati (PPT fino a %d W, TDC %d A, EDC %d A, FMax +%d MHz). Più calore e consumo; Tjmax resta comunque <= baseline."
 
-#: ryzenctl
+#: siliconctl
 msgid "limits back to the factory caps"
 msgstr "limiti riportati ai tetti di fabbrica"
 
-#: ryzenctl
-msgid "Boost requires unlock (ryzenctl unlock on; in the GUI: Preferences, \"Allow beyond the stock values\")"
-msgstr "Boost richiede lo sblocco (ryzenctl unlock on; nella GUI: Preferenze, \"Consenti oltre i valori di fabbrica\")"
+#: siliconctl
+msgid "Boost requires unlock (siliconctl unlock on; in the GUI: Preferences, \"Allow beyond the stock values\")"
+msgstr "Boost richiede lo sblocco (siliconctl unlock on; nella GUI: Preferenze, \"Consenti oltre i valori di fabbrica\")"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: trust on|off|status"
 msgstr "uso: trust on|off|status"
 
-#: ryzenctl
+#: siliconctl
 msgid "unknown calling user (pkexec or sudo required)"
 msgstr "utente chiamante sconosciuto (serve pkexec o sudo)"
 
-#: ryzenctl
+#: siliconctl
 msgid "fake"
 msgstr "finto"
 
-#: ryzenctl
+#: siliconctl
 msgid "n/a"
 msgstr "n/d"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "CPU %s, %d cores, SMU %s, PM table %s"
 msgstr "CPU %s, %d core, SMU %s, PM table %s"
 
-#: ryzenctl
+#: siliconctl
 msgid "  (experimental, not verified)"
 msgstr "  (sperimentale, non verificato)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "Limits  "
 msgstr "Limiti  "
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "Now     PPT %s  TDC %s  Tctl %s"
 msgstr "Ora     PPT %s  TDC %s  Tctl %s"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "Power   %s%s, boost %s%s"
 msgstr "Energia %s%s, boost %s%s"
@@ -177,327 +177,327 @@ msgstr "saltato: non disponibile su questa CPU"
 msgid "the BIOS reports motherboard limits (%s), not the CPU's stock ones: set PBO to Auto or Disabled in the BIOS, or Advanced with your own limits"
 msgstr "il BIOS riporta i limiti della scheda madre (%s), non quelli di fabbrica della CPU: nel BIOS imposta PBO su Auto o Disabled, oppure Advanced con limiti tuoi"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "Baseline %s, unlock %s, autostart %s, profile %s"
 msgstr "Baseline %s, sblocco %s, avvio automatico %s, profilo %s"
 
-#: ryzenctl
+#: siliconctl
 msgid "of this boot"
 msgstr "di questo boot"
 
-#: ryzenctl
+#: siliconctl
 msgid "stale"
 msgstr "vecchia"
 
-#: ryzenctl
+#: siliconctl
 msgid "missing"
 msgstr "assente"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "invalid profile name '%s' (only a-z 0-9 _ -)"
 msgstr "nome profilo non valido '%s' (solo a-z 0-9 _ -)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "profile '%s' does not exist"
 msgstr "profilo '%s' inesistente"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "line %d: '%s' not allowed in a profile"
 msgstr "riga %d: '%s' non ammesso in un profilo"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "line %d (%s): %s"
 msgstr "riga %d (%s): %s"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: apply <profile|baseline> [cpu|fan]"
 msgstr "uso: apply <profilo|baseline> [cpu|fan]"
 
-#: ryzenctl
+#: siliconctl
 msgid "'baseline' is reserved"
 msgstr "'baseline' è riservato"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "profile '%s' does not exist or is reserved"
 msgstr "profilo '%s' inesistente o riservato"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: profile list | show <name> | save <name> <line>… | delete <name>"
 msgstr "uso: profile list | show <nome> | save <nome> <riga>… | delete <nome>"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: use <profile>"
 msgstr "uso: use <profilo>"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: autostart on|off"
 msgstr "uso: autostart on|off"
 
-#: ryzenctl
+#: siliconctl
 msgid "no profile selected (use <profile>)"
 msgstr "nessun profilo selezionato (use <profilo>)"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: preset quiet|performance|eco|auto|boost [show]"
 msgstr "uso: preset quiet|performance|eco|auto|boost [show]"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "stress-ng exit code %d (result verification failed or process terminated)"
 msgstr "stress-ng codice %d (verifica dei risultati fallita o processo terminato)"
 
-#: ryzenctl
+#: siliconctl
 msgid "MCE error in the kernel log"
 msgstr "errore MCE nel log del kernel"
 
-#: ryzenctl
+#: siliconctl
 msgid "stress-ng not installed: required for the load tests"
 msgstr "stress-ng non installato: serve per i test di carico"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "unknown parameter '%s' (%s)"
 msgstr "parametro sconosciuto '%s' (%s)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "stress-ng %s terminated after %.0f s (exit code %s) during the benchmark"
 msgstr "stress-ng %s terminato dopo %.0f s (codice %s) durante il benchmark"
 
-#: ryzenctl
+#: siliconctl
 msgid "stress-ng reported no metrics"
 msgstr "stress-ng non ha riportato le metriche"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: autotune start eco|auto|boost [target=70 colimit=-40 margin=3 step=90 parallel=1 reuse=1 single=1 watchdog=1] | verify <profile> [minutes=60] | step | status | abort | finish | save [apply] | estimate eco|auto|boost […]"
 msgstr "uso: autotune start eco|auto|boost [target=70 colimit=-40 margin=3 step=90 parallel=1 reuse=1 single=1 watchdog=1] | verify <profilo> [minutes=60] | step | status | abort | finish | save [apply] | estimate eco|auto|boost […]"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: autotune estimate eco|auto [key=value…]"
 msgstr "uso: autotune estimate eco|auto [chiave=valore…]"
 
-#: ryzenctl
+#: siliconctl
 msgid "no completed calibration to save"
 msgstr "nessuna calibrazione completata da salvare"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: autotune save [apply]"
 msgstr "uso: autotune save [apply]"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: autotune start eco|auto|boost [name=<profile>] [key=value…]"
 msgstr "uso: autotune start eco|auto|boost [name=<profilo>] [chiave=valore…]"
 
 msgid "'%s' is a mode of its own: a custom calibration needs another name"
 msgstr "'%s' è una modalità a sé: una calibrazione personalizzata ha bisogno di un altro nome"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "the combined CO already proved unstable up to margin +%d: raise margin or repeat the search with reuse=0"
 msgstr "il CO combinato è già risultato instabile fino al margine +%d: aumenta margin o ripeti la ricerca con reuse=0"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: autotune start|verify|step|status|abort|finish|save|estimate"
 msgstr "uso: autotune start|verify|step|status|abort|finish|save|estimate"
 
-#: ryzenctl
+#: siliconctl
 msgid "no calibration in progress (autotune start eco|auto|boost)"
 msgstr "nessuna calibrazione in corso (autotune start eco|auto|boost)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "unknown phase: %s"
 msgstr "fase sconosciuta: %s"
 
-#: ryzenctl
+#: siliconctl
 msgid "final pass unstable even with the increased margin: CO left at baseline"
 msgstr "passata finale instabile anche con margine aumentato: CO lasciato a baseline"
 
-#: ryzenctl
+#: siliconctl
 msgid "CPU profile not applied: crash in the previous boot"
 msgstr "profilo CPU non applicato: crash nel boot precedente"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: crashed [clear]"
 msgstr "uso: crashed [clear]"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
-msgid "Profile '%s' has been disabled: the system crashed (%s). Click to open Ryzen Control and decide."
-msgstr "Il profilo '%s' è stato disattivato: il sistema è andato in crash (%s). Clicca per aprire Ryzen Control e decidere."
+msgid "Profile '%s' has been disabled: the system crashed (%s). Click to open Silicon Control and decide."
+msgstr "Il profilo '%s' è stato disattivato: il sistema è andato in crash (%s). Clicca per aprire Silicon Control e decidere."
 
-#: ryzenctl
-msgid "Open Ryzen Control"
-msgstr "Apri Ryzen Control"
+#: siliconctl
+msgid "Open Silicon Control"
+msgstr "Apri Silicon Control"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "channel %d not writable: role '%s' (only 'ventola', assigned by `fan autodetect`)"
 msgstr "canale %d non scrivibile: ruolo '%s' (solo 'ventola', assegnato da `fan autodetect`)"
 
-#: ryzenctl
+#: siliconctl
 msgid "no nct67xx chip in hwmon: `fan enable` (nct6775 module, kernel parameter if needed)"
 msgstr "nessun chip nct67xx in hwmon: `fan enable` (modulo nct6775, eventuale parametro kernel)"
 
-#: ryzenctl
+#: siliconctl
 msgid "no channel with rpm > 0"
 msgstr "nessun canale con giri > 0"
 
-#: ryzenctl
+#: siliconctl
 msgid "stress-ng not installed: required for the test load"
 msgstr "stress-ng non installato: serve per il carico di prova"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "ΔTctl %.1f °C, rpm %d→%d at %d%%%s"
 msgstr "ΔTctl %.1f °C, giri %d→%d al %d%%%s"
 
-#: ryzenctl
+#: siliconctl
 msgid ", aborted"
 msgstr ", interrotto"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: fan status|autodetect|identify N|role N pompa|sconosciuto|name N <name>|enable|disable|<N> step <up> <down>|<N> curve t:pwm …"
 msgstr "uso: fan status|autodetect|identify N|role N pompa|sconosciuto|name N <nome>|enable|disable|<N> step <su> <giù>|<N> curve t:pwm …"
 
-#: ryzenctl
+#: siliconctl
 msgid "channel"
 msgstr "canale"
 
-#: ryzenctl
+#: siliconctl
 msgid "manually you can only demote: role N pompa|sconosciuto ('ventola' only from autodetect)"
 msgstr "a mano si può solo declassare: role N pompa|sconosciuto ('ventola' solo da autodetect)"
 
-#: ryzenctl
+#: siliconctl
 msgid "set manually"
 msgstr "impostato a mano"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "channel %d does not exist (%s)"
 msgstr "canale %d inesistente (%s)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "fan %d %s: wrote %d but read back %d"
 msgstr "fan %d %s: scritto %d ma riletto %d"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "channel %d is not a pump (role '%s'; only role 'pompa')"
 msgstr "canale %d non è classificato 'pompa' (ruolo '%s')"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "pump max %"
 msgstr "tetto pompa %"
 
-#: ryzenctl
+#: siliconctl
 msgid "pump max"
 msgstr "tetto pompa"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: fan <N> pump auto | fan <N> pump max <50-100> | fan <N> pump <50-100>"
 msgstr "uso: fan <N> pump auto | fan <N> pump max <50-100> | fan <N> pump <50-100>"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "pump %"
 msgstr "pompa %"
 
-#: ryzenctl
+#: siliconctl
 msgid "pump"
 msgstr "pompa"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "pump %d: wrote pwm %d but read back %d"
 msgstr "pompa %d: scritto pwm %d ma riletto %d"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "curve point '%s': expected temperature:pwm (e.g. 60:150)"
 msgstr "punto curva '%s': atteso temperatura:pwm (es. 60:150)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "curve: 1 to %d points for channel %d"
 msgstr "curva: da 1 a %d punti per il canale %d"
 
-#: ryzenctl
+#: siliconctl
 msgid "curve: temperatures must increase and pwm must not decrease"
 msgstr "curva: temperature crescenti e pwm non decrescenti"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "curve: the last point must be pwm 255 at <= %d °C"
 msgstr "curva: l'ultimo punto deve essere pwm 255 a <= %d °C"
 
-#: ryzenctl
+#: siliconctl
 msgid "usage: fan <N> step <up_ms> <down_ms> | fan <N> curve t:pwm … | fan <N> pump auto|max <50-100>|<50-100>"
 msgstr "uso: fan <N> step <su_ms> <giù_ms> | fan <N> curve t:pwm … | fan <N> pump auto|max <50-100>|<50-100>"
 
-#: ryzenctl
+#: siliconctl
 msgid "nct6775 loaded but no nct67xx chip in hwmon: Super I/O not reachable via LPC"
 msgstr "nct6775 caricato ma nessun chip nct67xx in hwmon: Super I/O non raggiungibile via LPC"
 
-#: ryzenctl
+#: siliconctl
 msgid "ACPI conflict: add acpi_enforce_resources=lax to the kernel command line (GRUB_CMDLINE_LINUX_DEFAULT) and reboot"
 msgstr "conflitto ACPI: aggiungere acpi_enforce_resources=lax alla riga del kernel (GRUB_CMDLINE_LINUX_DEFAULT) e riavviare"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "Chip %s"
 msgstr "Chip %s"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "pwm%-2d %-17s %5d rpm  pwm %3d  mode %d  step %d/%d ms  curve %s%s"
 msgstr "pwm%-2d %-17s %5d giri  pwm %3d  modo %d  step %d/%d ms  curva %s%s"
 
-#: ryzenctl
+#: siliconctl
 msgid "skipped: no baseline (PM table missing)"
 msgstr "saltato: nessuna baseline (PM table assente)"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "error: %s"
 msgstr "errore: %s"
 
-#: ryzenctl
+#: siliconctl
 msgid "restored"
 msgstr "ripristinata"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "error restoring the baseline: %s"
 msgstr "errore nel ripristino: %s"
 
-#: ryzenctl
+#: siliconctl
 msgid "FAILED"
 msgstr "FALLITO"
 
-#: ryzenctl
+#: siliconctl
 msgid "invalid request: expected a JSON array of strings"
 msgstr "richiesta non valida: atteso un array JSON di stringhe"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "command '%s' not available via serve"
 msgstr "comando '%s' non disponibile via serve"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "internal: %r"
 msgstr "interno: %r"
 
-#: ryzenctl
+#: siliconctl
 #, python-format
 msgid "unknown command: %s (available: %s)"
 msgstr "comando sconosciuto: %s (disponibili: %s)"

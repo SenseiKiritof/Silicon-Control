@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: ryzen-control
-Source: https://github.com/SenseiKiritof/Ryzen-Control
+Upstream-Name: silicon-control
+Source: https://github.com/SenseiKiritof/Silicon-Control
 
 Files: *
 Copyright: 2026 senseikiritof

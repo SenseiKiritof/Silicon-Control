@@ -4,6 +4,14 @@ Revision 1 (2026-10-13): created from Ryzen Control v0.8.0 at the user's request
 questo come base ma per tutte le cpu, non solo AMD". Name chosen by the user among the proposals (Silicon
 Control; alternatives were Tempra and Calibro).
 
+Revision 2 (2026-10-13): the open decisions confirmed by the user, one question each (moved to "Decisions
+taken").
+
+Revision 3 (2026-10-13): phase 0, step 2 without the `DRV_VERSION` bump. Measured on the 9800X3D: with 0.4.2 (same
+source) dkms 3.4.3 refused to install a module whose `MODULE_VERSION` (0.1.7) equals the installed one, and
+ryzen-control's `%preun` then removed `ryzen_smu/0.4.1`, the only installed copy. With the same version the new
+package's `dkms add --rpm_safe_upgrade` cancels that removal, as in Ryzen Control's own upgrades.
+
 ## Context
 
 Ryzen Control (`../Ryzen Control`, v0.8.0, public on GitHub) is a Ryzen Master-style tool for Linux: a root
@@ -34,20 +42,17 @@ an owner runs `hwtest`, exactly as for the AMD families today.
 - License unchanged: GPL-3.0-or-later, the vendored ryzen_smu GPL-2.0-only.
 - Same stack and constraints: Python ≥ 3.9 stdlib for the helper, PyGObject + GTK4 + libadwaita ≥ 1.5 for the
   GUI, no test framework (`selftest` on fake backends), one `make install` behind every package.
-
-## Decisions to confirm with the user (first thing in the new session)
-
-1. Version numbering: start again at 0.1.0 (suggested: new name, new project) or continue at 0.9.0.
-2. Ryzen Control's future: frozen at 0.8.x, fixes only, and superseded when Silicon Control reaches parity on
-   AMD — the packages then replace it (suggested).
-3. Intel test hardware: does the user own or can borrow an Intel machine (which generation, desktop or
-   laptop)? Without it, Intel ships as "expected" and fake-tested.
-4. Scope of "every CPU": AMD + Intel + a generic backend that uses only kernel interfaces and therefore also
-   covers ARM and anything else (suggested); no vendor-specific code for ARM.
-5. GitHub repository: name (suggested `SenseiKiritof/Silicon-Control`) and when to create it; the user
-   pushes.
-6. Internal protocol keys with Italian names (`canale`, `modo`, `curva`, `ventola`, `pompa`, `instabile`):
-   keep them (suggested: they are stored in the user's settings and profiles, renaming means migrating data).
+- Version numbering starts again at **0.1.0** (new name, new project).
+- Ryzen Control is frozen at 0.8.x (fixes only) and superseded: the Silicon Control packages replace it and
+  import its data (phase 0, step 2).
+- Scope: AMD + Intel + a **generic** backend that uses only kernel interfaces and therefore also covers ARM and
+  anything else; no vendor-specific code for ARM.
+- Intel test hardware: none for now ("ad oggi no, ma vedremo"). Intel ships fake-tested and "expected" until an
+  owner runs `hwtest`.
+- GitHub repository `SenseiKiritof/Silicon-Control`, created by the user at phase 4: until then everything stays
+  local and the first public release is already multi-vendor. The packages' URLs point there from phase 0.
+- The internal protocol keys with Italian names (`canale`, `modo`, `curva`, `ventola`, `pompa`, `instabile`)
+  stay: they are stored in the user's settings and profiles, and renaming them would mean migrating data.
 
 ## Target architecture
 
@@ -112,7 +117,7 @@ backends nobody here can run stay "expected".
 | # | Commit | Verification |
 |---|---|---|
 | 1 | `chore: rename to Silicon Control` — binaries, app id, `/etc`, `/var/lib`, `/run` paths, kernel parameter `siliconctl.off`, gettext domains (msgids with the name, Italian catalogs), systemd units, udev rule, modprobe and polkit files (action id), desktop, metainfo (`<replaces>` the old id), icon, tray, env vars of the fake backend (`SILICONCTL_ROOT`, `SILICONCTL_FAKE_FAMILY`), packaging (spec, debian, PKGBUILD, build scripts), release workflow, README, screenshots | `make check`, `make rpm` / `deb` / `arch`, GUI smoke en/it; `grep -ri ryzen` finds only the driver, the AMD family names, the migration code and history notes |
-| 2 | `feat: take over from Ryzen Control` — packages replace `ryzen-control` (RPM `Obsoletes`, deb `Replaces/Breaks`, Arch `replaces/conflicts`); bump `DRV_VERSION` so the old package's `%preun`, which removes `ryzen_smu/0.4.1` from dkms, cannot remove the new module; `boot` imports `/etc/ryzenctl` (settings, profiles) and `/var/lib/ryzenctl` (calibration data, `crashed` marker) when the new directories do not exist yet; the polkit trust rule and the user's login autostart entry renamed; the old kernel parameter `ryzenctl.off` still honoured | selftest with a fake Ryzen Control state; the user installs over Ryzen Control 0.8.0 on the 9800X3D: profiles and calibrations kept (`new-auto` applies), `hwtest` ok, one service only |
+| 2 | `feat: take over from Ryzen Control` — packages replace `ryzen-control` (RPM `Obsoletes`, deb `Replaces/Breaks`, Arch `replaces/conflicts`); `DRV_VERSION` unchanged, so the `dkms add --rpm_safe_upgrade` of the new `%post` cancels the `dkms remove` of the old `%preun` (revision 3); `boot` imports `/etc/ryzenctl` (settings, profiles) and `/var/lib/ryzenctl` (calibration data, `crashed` marker) when the new directories do not exist yet; the polkit trust rule and the user's login autostart entry renamed; the old kernel parameter `ryzenctl.off` still honoured | selftest with a fake Ryzen Control state; the user installs over Ryzen Control 0.8.0 on the 9800X3D: profiles and calibrations kept (`new-auto` applies), `hwtest` ok, one service only |
 
 ### Phase 1 — backends and capabilities, AMD unchanged
 
@@ -144,7 +149,6 @@ release workflow, the GitHub repository when the user creates it.
 
 - Read `CLAUDE.md`, this plan and, for the history of a piece of code, `../Ryzen Control` (its CLAUDE.md, its
   plan revisions and `git log`).
-- Ask the decisions above with one question each, then start phase 0, step 1.
 - The rename touches almost every file (`grep -rIl -E "ryzenctl|ryzen-control|ryzencontrol|RyzenControl|Ryzen
   Control"` lists them): do it in one commit with `make check` green, so the next steps start from the new
   names; leave the AMD family names (Granite Ridge, …) and the `ryzen_smu` driver alone.

@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Ryzen Control: crash check
-Name[it]=Ryzen Control: controllo crash
+Name=Silicon Control: crash check
+Name[it]=Silicon Control: controllo crash
 Comment=Warns at login if the CPU profile was disabled after a crash
 Comment[it]=Avvisa al login se il profilo CPU è stato disattivato dopo un crash
-Exec=ryzenctl notify
-Icon=org.ryzencontrol.RyzenControl
+Exec=siliconctl notify
+Icon=io.github.senseikiritof.SiliconControl
 Terminal=false
 NoDisplay=true

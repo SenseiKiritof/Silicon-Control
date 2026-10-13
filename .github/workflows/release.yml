@@ -22,7 +22,7 @@ jobs:
           v="$(sed -n 's/^VERSION := //p' Makefile)"
           test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME ≠ VERSION $v"; exit 1; }
       - name: Selftest (fake backend)
-        run: python3 ryzenctl selftest
+        run: python3 siliconctl selftest
       - name: RPM
         run: make rpm
       - uses: actions/upload-artifact@v7

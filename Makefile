@@ -1,11 +1,13 @@
-# Ryzen Control — the single source of truth for the installed layout. Packages (RPM, deb, Arch)
+# Silicon Control — the single source of truth for the installed layout. Packages (RPM, deb, Arch)
 # call `make install DESTDIR=…`; `install-cli` / `install-gui` / `install-dkms-src` /
 # `install-locales` are the pieces.
-VERSION := 0.8.0
+VERSION := 0.1.0
 # DKMS module version: bump ONLY when ryzen_smu/ changes (a new /usr/src directory means a
-# rebuild + dracut, about a minute at upgrade time). Same value as %drv_version in the spec.
+# rebuild + dracut, about a minute at upgrade time). Same value as %drv_version in the spec. Also bump the
+# driver's MODULE_VERSION: dkms does not install a module whose version equals the installed one, and the old
+# package's %preun then removes the only installed copy (seen in the takeover of ryzen-control with 0.4.2).
 DRV_VERSION := 0.4.1
-APPID := org.ryzencontrol.RyzenControl
+APPID := io.github.senseikiritof.SiliconControl
 PREFIX ?= /usr
 DESTDIR ?=
 
@@ -20,10 +22,10 @@ ICONDIR := $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
 METADIR := $(DESTDIR)$(PREFIX)/share/metainfo
 LOCALEDIR := $(DESTDIR)$(PREFIX)/share/locale
 AUTOSTARTDIR := $(DESTDIR)/etc/xdg/autostart
-ETCDIR := $(DESTDIR)/etc/ryzenctl
-STATEDIR := $(DESTDIR)/var/lib/ryzenctl
+ETCDIR := $(DESTDIR)/etc/siliconctl
+STATEDIR := $(DESTDIR)/var/lib/siliconctl
 DKMS_SRC := $(DESTDIR)$(PREFIX)/src/ryzen_smu-$(DRV_VERSION)
-TMPROOT := $(or $(TMPDIR),/tmp)/ryzen-control-check
+TMPROOT := $(or $(TMPDIR),/tmp)/silicon-control-check
 
 # Translations: po/<domain>/<lang>.po → build/locale/<lang>/LC_MESSAGES/<domain>.mo, compiled by
 # po/msgfmt.py (standard library only: no GNU gettext needed to build or install).
@@ -35,21 +37,21 @@ MO := $(foreach p,$(PO),build/locale/$(notdir $(basename $(p)))/LC_MESSAGES/$(no
 all:
 	@echo "Targets: install [DESTDIR=…] (install-cli install-gui install-dkms-src install-locales), locales, dkms, uninstall, check, driver-check, dist, rpm, deb, arch"
 
-install: install-cli $(if $(wildcard ryzen-control),install-gui) install-dkms-src install-locales
+install: install-cli $(if $(wildcard silicon-control),install-gui) install-dkms-src install-locales
 
 install-cli:
-	install -Dm755 ryzenctl $(BIN)/ryzenctl
-	install -Dm644 -t $(UNITDIR) data/ryzenctl.service data/ryzenctl-resume.service data/ryzenctl-reapply.service \
-	  data/ryzenctl-reapply.timer
-	install -Dm644 -t $(PRESETDIR) data/80-ryzen-control.preset
-	install -Dm644 -t $(UDEVDIR) data/60-ryzen-control.rules
-	install -Dm644 data/ryzen-control.modprobe.conf $(MODPROBEDIR)/ryzen-control.conf
+	install -Dm755 siliconctl $(BIN)/siliconctl
+	install -Dm644 -t $(UNITDIR) data/siliconctl.service data/siliconctl-resume.service data/siliconctl-reapply.service \
+	  data/siliconctl-reapply.timer
+	install -Dm644 -t $(PRESETDIR) data/80-silicon-control.preset
+	install -Dm644 -t $(UDEVDIR) data/60-silicon-control.rules
+	install -Dm644 data/silicon-control.modprobe.conf $(MODPROBEDIR)/silicon-control.conf
 	install -Dm644 -t $(POLKITDIR) data/$(APPID).policy
-	install -Dm644 -t $(AUTOSTARTDIR) data/ryzenctl-notify.desktop
+	install -Dm644 -t $(AUTOSTARTDIR) data/siliconctl-notify.desktop
 	install -dm755 $(ETCDIR)/profiles $(STATEDIR)
 
 install-gui:
-	install -Dm755 ryzen-control $(BIN)/ryzen-control
+	install -Dm755 silicon-control $(BIN)/silicon-control
 	install -Dm644 -t $(APPDIR) data/$(APPID).desktop
 	install -Dm644 -t $(ICONDIR) data/$(APPID).svg
 	install -Dm644 -t $(METADIR) data/$(APPID).metainfo.xml
@@ -82,51 +84,53 @@ dkms:
 uninstall:
 	-dkms remove ryzen_smu/$(DRV_VERSION) --all
 	rm -rf $(DKMS_SRC)
-	rm -f $(BIN)/ryzenctl $(BIN)/ryzen-control
-	rm -f $(UNITDIR)/ryzenctl.service $(UNITDIR)/ryzenctl-resume.service $(PRESETDIR)/80-ryzen-control.preset
-	rm -f $(UNITDIR)/ryzenctl-reapply.service $(UNITDIR)/ryzenctl-reapply.timer $(UDEVDIR)/60-ryzen-control.rules
-	rm -f $(MODPROBEDIR)/ryzen-control.conf $(POLKITDIR)/$(APPID).policy $(AUTOSTARTDIR)/ryzenctl-notify.desktop
+	rm -f $(BIN)/siliconctl $(BIN)/silicon-control
+	rm -f $(UNITDIR)/siliconctl.service $(UNITDIR)/siliconctl-resume.service $(PRESETDIR)/80-silicon-control.preset
+	rm -f $(UNITDIR)/siliconctl-reapply.service $(UNITDIR)/siliconctl-reapply.timer $(UDEVDIR)/60-silicon-control.rules
+	rm -f $(MODPROBEDIR)/silicon-control.conf $(POLKITDIR)/$(APPID).policy $(AUTOSTARTDIR)/siliconctl-notify.desktop
 	rm -f $(APPDIR)/$(APPID).desktop $(ICONDIR)/$(APPID).svg $(METADIR)/$(APPID).metainfo.xml
-	rm -f $(LOCALEDIR)/*/LC_MESSAGES/ryzenctl.mo $(LOCALEDIR)/*/LC_MESSAGES/ryzen-control.mo
+	rm -f $(LOCALEDIR)/*/LC_MESSAGES/siliconctl.mo $(LOCALEDIR)/*/LC_MESSAGES/silicon-control.mo
 
-# Checks that need neither root nor hardware: selftest, layout in a scratch root, units,
-# desktop entries, metainfo, the calibration window over every state of the fake backend
-# (needs a display; a fresh fake root each time), once in English and once with the Italian catalog.
+# Checks that need neither root nor hardware: the Italian catalogs against the sources, selftest,
+# layout in a scratch root, units, desktop entries, metainfo, the calibration window over every state
+# of the fake backend (needs a display; a fresh fake root each time), once in English and once with
+# the Italian catalog.
 check: locales
-	@v=$(VERSION); grep -q "^Version: *$$v$$" packaging/ryzen-control.spec && head -1 packaging/debian/changelog | grep -qF "($$v)" \
+	@v=$(VERSION); grep -q "^Version: *$$v$$" packaging/silicon-control.spec && head -1 packaging/debian/changelog | grep -qF "($$v)" \
 	  && grep -q "^pkgver=$$v$$" packaging/PKGBUILD || { echo "VERSION $$v differs in the spec, debian/changelog or PKGBUILD"; exit 1; }
-	python3 ryzenctl selftest
+	python3 po/check.py $(wildcard po/*/it.po)
+	python3 siliconctl selftest
 	rm -rf "$(TMPROOT)" && $(MAKE) install DESTDIR="$(TMPROOT)" >/dev/null
 	cd "$(TMPROOT)" && find . -type f | sort
-	systemd-analyze --root="$(TMPROOT)" verify --recursive-errors=no ryzenctl.service ryzenctl-resume.service \
-	  ryzenctl-reapply.service ryzenctl-reapply.timer
-	udevadm verify --resolve-names=never data/60-ryzen-control.rules
-	desktop-file-validate data/ryzenctl-notify.desktop data/$(APPID).desktop
+	systemd-analyze --root="$(TMPROOT)" verify --recursive-errors=no siliconctl.service siliconctl-resume.service \
+	  siliconctl-reapply.service siliconctl-reapply.timer
+	udevadm verify --resolve-names=never data/60-silicon-control.rules
+	desktop-file-validate data/siliconctl-notify.desktop data/$(APPID).desktop
 	-appstreamcli validate --no-net data/$(APPID).metainfo.xml
-	root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 RYZENCTL_ROOT=$$root timeout 120 python3 ryzen-control --mock --smoke; \
+	root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 SILICONCTL_ROOT=$$root timeout 120 python3 silicon-control --mock --smoke; \
 	  rc=$$?; rm -rf $$root; exit $$rc
-	root=$$(mktemp -d) && LANGUAGE=it LC_ALL=it_IT.UTF-8 RYZEN_CONTROL_LOCALEDIR=build/locale RYZENCTL_ROOT=$$root timeout 120 \
-	  python3 ryzen-control --mock --smoke; rc=$$?; rm -rf $$root; exit $$rc
+	root=$$(mktemp -d) && LANGUAGE=it LC_ALL=it_IT.UTF-8 SILICON_CONTROL_LOCALEDIR=build/locale SILICONCTL_ROOT=$$root timeout 120 \
+	  python3 silicon-control --mock --smoke; rc=$$?; rm -rf $$root; exit $$rc
 
 # README screenshots: the GUI on a fresh fake backend (fan roles, presets, the three calibrations),
 # one PNG per page plus the calibration window and a short GIF of an Auto calibration (ImageMagick),
 # in English (needs a display; windows flash briefly).
 screenshots:
-	root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 RYZENCTL_ROOT=$$root timeout 120 python3 ryzen-control --mock --screenshots docs/screenshots \
+	root=$$(mktemp -d) && LANGUAGE=C LC_ALL=C.UTF-8 SILICONCTL_ROOT=$$root timeout 120 python3 silicon-control --mock --screenshots docs/screenshots \
 	  && magick -delay 40 $$root/frames/f-*.png -delay 350 $$root/frames/last.png -loop 0 -resize 720x -layers Optimize docs/screenshots/calibration.gif; \
 	  rc=$$?; rm -rf $$root; exit $$rc
 
 # Tarball from the current commit (HEAD): packages are built from what is versioned.
 dist:
 	mkdir -p dist
-	git archive --format=tar.gz --prefix=ryzen-control-$(VERSION)/ -o dist/ryzen-control-$(VERSION).tar.gz HEAD
+	git archive --format=tar.gz --prefix=silicon-control-$(VERSION)/ -o dist/silicon-control-$(VERSION).tar.gz HEAD
 
 # RPM in the standard ~/rpmbuild tree (no spaces in paths); result copied to dist/.
 rpm: dist
 	rpmdev-setuptree
-	cp dist/ryzen-control-$(VERSION).tar.gz "$$HOME/rpmbuild/SOURCES/"
-	rpmbuild -ba packaging/ryzen-control.spec
-	cp "$$HOME"/rpmbuild/RPMS/noarch/ryzen-control-$(VERSION)-*.rpm dist/
+	cp dist/silicon-control-$(VERSION).tar.gz "$$HOME/rpmbuild/SOURCES/"
+	rpmbuild -ba packaging/silicon-control.spec
+	cp "$$HOME"/rpmbuild/RPMS/noarch/silicon-control-$(VERSION)-*.rpm dist/
 	ls -1 dist/
 
 # deb and Arch packages, built in a container with podman from the committed tree (like `make rpm`);
@@ -134,12 +138,12 @@ rpm: dist
 deb: dist
 	podman run --rm -i -v "$(CURDIR)/dist":/out:z docker.io/library/debian:trixie \
 	  sh -c 'mkdir /src && cd /src && tar -xz --strip-components=1 --no-same-owner && sh packaging/build-deb.sh /out' \
-	  < dist/ryzen-control-$(VERSION).tar.gz
+	  < dist/silicon-control-$(VERSION).tar.gz
 
 arch: dist
 	podman run --rm -i -v "$(CURDIR)/dist":/out:z docker.io/library/archlinux:latest \
 	  sh -c 'mkdir /src && cd /src && tar -xz --strip-components=1 --no-same-owner && sh packaging/build-arch.sh /out' \
-	  < dist/ryzen-control-$(VERSION).tar.gz
+	  < dist/silicon-control-$(VERSION).tar.gz
 
 # kbuild rejects spaces in the path: build a copy of the driver outside the repo.
 driver-check:

@@ -1,0 +1,16 @@
+[Unit]
+Description=Silicon Control: re-applies the profile's power limits that the laptop firmware rewrote
+# Started by siliconctl-reapply.timer and by 60-silicon-control.rules (AC plugged or unplugged). The flag exists only on
+# a laptop with "Apply at startup" and a profile that changes a limit (siliconctl writes it): nothing runs elsewhere.
+After=siliconctl.service
+ConditionKernelCommandLine=!siliconctl.off
+ConditionKernelCommandLine=!ryzenctl.off
+ConditionPathExists=/run/siliconctl/reapply-wanted
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/siliconctl reapply
+# Every 10 s: systemd's own lines about the unit (started, finished, skipped) stay out of the journal; siliconctl prints
+# only what it re-applied, and its errors.
+SyslogLevel=notice
+LogLevelMax=notice

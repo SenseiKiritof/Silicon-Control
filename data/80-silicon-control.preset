@@ -1,6 +1,6 @@
 # The service runs at every boot for the baseline and the crash-guard; it applies NOTHING until
-# the user enables "Apply at boot" (ryzenctl autostart on).
-enable ryzenctl.service
-enable ryzenctl-resume.service
+# the user enables "Apply at boot" (siliconctl autostart on).
+enable siliconctl.service
+enable siliconctl-resume.service
 # Laptops: the firmware's rewrites of the profile's limits undone every 10 s (a no-op without a laptop profile)
-enable ryzenctl-reapply.timer
+enable siliconctl-reapply.timer
