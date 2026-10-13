@@ -1,3 +1,15 @@
+silicon-control (0.4.0) unstable; urgency=medium
+
+  * The CPU check: on a CPU not verified yet (or on the generic backend)
+    the Monitor offers "Check this CPU" (also in Preferences): hwtest, then
+    a report of the CPU and its interfaces to send as a prefilled GitHub
+    issue, copy or save; never the host name, the user or a serial number.
+    The PM table of an unmapped AMD CPU only with the user's consent.
+  * siliconctl report [pm]; a successful hwtest marks this machine as
+    verified.
+
+ -- senseikiritof <tonifede98@gmail.com>  Tue, 13 Oct 2026 22:58:07 +0200
+
 silicon-control (0.3.0) unstable; urgency=medium
 
   * Intel backend (expected: tested on simulated hardware only): PL1/PL2

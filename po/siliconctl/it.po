@@ -676,3 +676,9 @@ msgstr "thermald è in esecuzione: può riscrivere i limiti di potenza e il limi
 
 msgid "tjmax: no TCC offset on this CPU"
 msgstr "tjmax: nessun TCC offset su questa CPU"
+
+msgid "usage: report [pm]"
+msgstr "uso: report [pm]"
+
+msgid "the PM table of this CPU is already mapped, or there is none: no dump"
+msgstr "la PM table di questa CPU è già mappata, oppure non c'è: nessun dump"

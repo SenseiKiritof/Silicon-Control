@@ -18,6 +18,7 @@ import tempfile
 import time
 import traceback
 
+VERSION = "0.4.0"   # = VERSION in the Makefile (make check verifies it)
 _T = None
 
 
@@ -616,9 +617,9 @@ class Fake:
     def pm(self):
         s = self.s
         fam = FAMILIES.get(s["codename"])
-        if not s["pm_version"] or not fam:
+        if not s["pm_version"]:
             return None, None
-        if not fam["pm"]:   # a table this program cannot read: only its version
+        if not fam or not fam["pm"]:   # a table this program cannot read (a family without a map, or not in FAMILIES)
             return s["pm_version"], [0.0] * 457
         PM = fam["pm"]
         t = [0.0] * 457
@@ -790,10 +791,16 @@ def pm_table():
     if not fam.get("pm"):   # no map (GENERIC, Raphael, Zen/Zen+): not even read, every read is an SMU command
         return None, None
     version, t = FAKE.pm() if FAKE else pm_raw()
-    prefix = fam.get("pm_prefix")
-    if version is None or not ((prefix is not None and version >> 16 == prefix) or version in fam.get("pm_versions", ())):
+    if not pm_accepts(fam, version):
         return None, None
     return version, t
+
+
+def pm_accepts(fam, version):
+    """A PM table this family's map applies to: its version's prefix (version >> 16) or one of its listed versions."""
+    prefix = fam.get("pm_prefix") if fam and fam.get("pm") else None
+    return version is not None and bool(fam and fam.get("pm")) and (
+        (prefix is not None and version >> 16 == prefix) or version in fam.get("pm_versions", ()))
 
 
 def check_cpu():
@@ -1599,6 +1606,7 @@ def cmd_status(ctx, args):
                    "tjmax": lim.get("thm_limit", intel.get("tjmax")), "stapm": lim.get("stapm_limit"),   # APUs: STAPM read only
                    "fast": lim.get("fast_limit"), "slow": lim.get("slow_limit"), "pl1": intel.get("pl1"), "pl2": intel.get("pl2")},
         "warnings": intel_warnings() if fam["backend"] == "intel" else [],
+        "version": VERSION, "checked": hwtest_record(), "cpu_id": cpu_id(), "pm_offered": pm_offered(),
         "now": {"ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(), "tdc": lim.get("tdc"),
                 "tctl": tctl(), "tctl_pm": lim.get("tctl")},
         "power": power_get(), "boost": boost_get(),
@@ -1724,6 +1732,132 @@ def fmt_status(st):
         lines.append(_("Laptop  on %s, baseline captured on %s") % (src[st["power_source"]], src.get(st["baseline_source"], "?"))
                      + (_("; re-applying stopped %s: %s") % (rp["gave_up"], rp.get("why")) if rp.get("gave_up") else ""))
     return "\n".join(lines)
+
+
+# ---- The CPU report: what an owner sends to add or verify this CPU ------------------------------
+def cpu_id():
+    """This CPU for the local hwtest record: the backend, the model name, the codename (AMD) or vendor/family/model."""
+    fam, info = family(), cpuinfo()
+    code = smu_info()["codename"] if fam["backend"] == "amd" else None
+    return "|".join(str(x) for x in (fam["backend"], cpu_model(), code if code is not None else "%s %s %s" % (
+        info.get("vendor_id"), info.get("cpu family"), info.get("model"))))
+
+
+def hwtest_record():
+    """The last hwtest of this CPU on this machine ({date, esito, id, results}), None when absent or for another CPU."""
+    rec = load_settings().get("hwtest")
+    return rec if rec and rec.get("id") == cpu_id() else None
+
+
+def smu_info():
+    """The ryzen_smu driver's cached values (no SMU command: the driver copies them): codename, versions, and the PM
+    table's version and size; None for what is missing."""
+    if FAKE:
+        v = FAKE.s.get("pm_version")
+        return {"codename": FAKE.s.get("codename"), "smu": "fake", "mp1": None, "driver": None,
+                "pm_version": v or None, "pm_size": 457 * 4 if v else None}
+    def raw(name, fmt):
+        try:
+            with open(P(SMU_DIR + "/" + name), "rb") as f:
+                return struct.unpack(fmt, f.read(struct.calcsize(fmt)))[0]
+        except (OSError, struct.error):
+            return None
+    def text(name):
+        try:
+            return read_text(SMU_DIR + "/" + name)
+        except OSError:
+            return None
+    code = text("codename")
+    return {"codename": int(code) if code and code.isdigit() else None, "smu": text("version"),
+            "mp1": text("mp1_if_version"), "driver": text("drv_version"), "pm_version": raw("pm_table_version", "<I") or None,
+            "pm_size": raw("pm_table_size", "<Q")}
+
+
+def pm_offered():
+    """The PM table dump is offered (with consent) where the driver has a table that no map here reads: a codename not
+    in FAMILIES, or a version its family does not accept."""
+    smu = smu_info()
+    return bool(smu["pm_version"] and smu["pm_size"] and smu["codename"] is not None
+                and not pm_accepts(FAMILIES.get(smu["codename"]), smu["pm_version"]))
+
+
+def cmd_report(ctx, args):
+    """`report [pm]`: Markdown for an issue with what is needed to add or verify this CPU. Read-only, never the host
+    name, the user or a serial number. `pm`: the PM table appended as hex words, only with the user's consent and only
+    where pm_offered(): the read goes through the driver (an SMU transfer command on a family not in FAMILIES)."""
+    if args not in ([], ["pm"]):
+        raise Err(_("usage: report [pm]"))
+    fam, info = check_cpu(), cpuinfo()
+
+    def rt(path, default=None):
+        try:
+            return read_text(path)
+        except OSError:
+            return default
+
+    def ls(path):
+        return sorted(os.listdir(P(path))) if os.path.isdir(P(path)) else []
+
+    def d(*values):   # what this machine does not have reads as "-"
+        return tuple("-" if v is None else v for v in values)
+    osr = dict(l.split("=", 1) for l in (rt("/etc/os-release", "") or "").splitlines() if "=" in l)
+    rec = hwtest_record()
+    lines = ["## CPU report: Silicon Control %s" % VERSION, "",
+             "- CPU: %s (%s, family %s, model %s, stepping %s, microcode %s)" % d(
+                 cpu_model(), info.get("vendor_id"), info.get("cpu family"), info.get("model"), info.get("stepping"),
+                 info.get("microcode")),
+             "- Cores: %d (CCDs %d, threads %d)" % (CORES, len({cid // 8 for cid, _cpus in TOPO}),
+                                                    sum(len(c.split(",")) for _cid, c in TOPO)),
+             "- Backend: %s%s, %s" % (fam["backend"], " (%s)" % fam["why"] if fam.get("why") else "",
+                                       "verified" if fam["verified"] else "expected"),
+             "- Checked here: %s" % ("%s, %s" % (rec["date"], rec["esito"]) if rec else "no"),
+             "- Kernel: %s; %s" % (os.uname().release, osr.get("PRETTY_NAME", "?").strip('"')),
+             "- Board: %s %s; BIOS %s (%s)" % tuple(rt("/sys/class/dmi/id/" + k, "?") for k in (
+                 "board_vendor", "board_name", "bios_version", "bios_date")),
+             "- Laptop: %s" % ("yes (on %s)" % power_source() if system_battery() else "no"),
+             "- cpufreq: %s, governor %s, EPP %s, boost %s, policies %d" % d(
+                 rt(CPUFREQ + "/policy0/scaling_driver"), rt(CPUFREQ + "/policy0/scaling_governor"),
+                 rt(CPUFREQ + "/policy0/energy_performance_preference"), boost_get(), len(cpufreq_policies())),
+             "- Sensors: %s; thermal zones: %s" % (
+                 ", ".join(rt("%s/%s/name" % (HWMON, d), "?") for d in ls(HWMON)) or "-",
+                 ", ".join(rt("/sys/class/thermal/%s/type" % z, "?") for z in ls("/sys/class/thermal") if z.startswith("thermal_zone")) or "-")]
+    for z in (z for z in ls("/sys/class/powercap") if ":" in z):
+        base = "/sys/class/powercap/" + z
+        cons = ["%s %s W (max %s W)" % (rt("%s/constraint_%d_name" % (base, n)),
+                                         int(rt("%s/constraint_%d_power_limit_uw" % (base, n), "0")) // 10 ** 6,
+                                         int(rt("%s/constraint_%d_max_power_uw" % (base, n), "0") or 0) // 10 ** 6)
+                for n in range(3) if rt("%s/constraint_%d_name" % (base, n))]
+        lines.append("- Powercap %s: %s, enabled %s%s" % (z, rt(base + "/name"), rt(base + "/enabled"),
+                                                           (": " + ", ".join(cons)) if cons else ""))
+    smu = smu_info()
+    if smu["codename"] is not None:
+        lines += ["", "### AMD", "- Codename %s (%s), SMU %s, MP1 interface %s, driver %s" % d(
+                      smu["codename"], FAMILIES.get(smu["codename"], {}).get("name", "not in the table"), smu["smu"],
+                      smu["mp1"], smu["driver"]),
+                  "- PM table: %s, %s bytes, %s" % (hex(smu["pm_version"]) if smu["pm_version"] else "none", smu["pm_size"],
+                                                    "mapped" if pm_accepts(FAMILIES.get(smu["codename"]), smu["pm_version"])
+                                                    else "not mapped"),
+                  "- Per-core Curve Optimizer: %s" % (co_support() or "usable")]
+    if fam["backend"] == "intel":
+        f = tcc_file()
+        lines += ["", "### Intel", "- TCC offset: %s (TjMax %s °C, max offset %s)" % d(f, tjmax_hw(), tcc_max_offset(f) if f else None),
+                  "- intel_pstate: %s, no_turbo %s; thermald %s" % d(
+                      rt("/sys/devices/system/cpu/intel_pstate/status"), rt(NO_TURBO), "running" if thermald_running() else "no")]
+    limits = limits_now()
+    if limits:
+        lines.append("- Limits now: " + ", ".join("%s %g" % kv for kv in sorted(limits.items())))
+    if rec:
+        lines += ["", "### Last hwtest (%s)" % rec["date"], "```"] + ["%-9s %s" % kv for kv in rec["results"].items()] + ["```"]
+    if args == ["pm"]:
+        if not pm_offered():
+            raise Err(_("the PM table of this CPU is already mapped, or there is none: no dump"))
+        version, t = FAKE.pm() if FAKE else pm_raw()
+        words = struct.unpack("<%dI" % len(t), struct.pack("<%df" % len(t), *t))
+        lines += ["", "### PM table %s (%d floats, by index)" % (hex(version), len(t)), "```"]
+        lines += ["%4d: %s" % (i, " ".join("%08x" % w for w in words[i:i + 8])) for i in range(0, len(words), 8)] + ["```"]
+    title = "CPU report: %s (%s%s)" % (cpu_model(), fam["backend"], ", codename %s" % smu["codename"]
+                                       if smu["codename"] is not None else "")
+    return {"report": "\n".join(lines) + "\n", "title": title, "pm_offered": pm_offered()}
 
 
 # ---- Profiles ----------------------------------------------------------------------------
@@ -3716,6 +3850,10 @@ def cmd_hwtest(ctx, args):
         results["baseline"] = _("error restoring the baseline: %s") % e
         failed = True
     results["esito"] = _("FAILED") if failed else "ok"
+    s = load_settings()   # the local record of this CPU (status.checked; the report quotes it)
+    s["hwtest"] = {"date": time.strftime("%Y-%m-%d %H:%M"), "esito": "FAILED" if failed else "ok", "id": cpu_id(),
+                   "results": results}
+    save_settings(s)
     return results
 
 
@@ -3922,10 +4060,10 @@ COMMANDS = {
     "fmax": cmd_fmax, "shaper": cmd_shaper, "power": cmd_power, "boost": cmd_boost, "unlock": cmd_unlock,
     "apply": cmd_apply, "profile": cmd_profile, "use": cmd_use, "autostart": cmd_autostart, "trust": cmd_trust,
     "default": cmd_default, "boot": cmd_boot, "shutdown": cmd_shutdown, "resume": cmd_resume,
-    "crashed": cmd_crashed, "notify": cmd_notify, "serve": cmd_serve, "hwtest": cmd_hwtest,
+    "crashed": cmd_crashed, "notify": cmd_notify, "serve": cmd_serve, "hwtest": cmd_hwtest, "report": cmd_report,
     "fan": cmd_fan, "telemetry": cmd_telemetry, "preset": cmd_preset, "autotune": cmd_autotune, "reapply": cmd_reapply,
 }
-FORMAT = {"status": fmt_status, "hwtest": fmt_hwtest, "fan": fmt_fan}
+FORMAT = {"status": fmt_status, "hwtest": fmt_hwtest, "fan": fmt_fan, "report": lambda r: r["report"].rstrip("\n")}
 AMD_TJMAX = limit_setter("tjmax", "thm_limit", "tjmax_set", "°C", TJMAX_MIN)
 
 
@@ -4704,6 +4842,7 @@ def selftest():
     selftest_transport()
     selftest_generic()
     selftest_intel()
+    selftest_report()
     print("selftest ok (%s)" % ROOT)
 
 
@@ -5517,6 +5656,43 @@ def selftest_intel():
     for zone in RAPL_ZONES:   # the firmware puts its PL1 back in both
         write_atomic(P(zone + "/constraint_0_power_limit_uw"), str(28 * 10 ** 6))
     assert run(["reapply"])["reapplied"] == ["pl1 20"] and uw(0, 0) == uw(1, 0) == 20 * 10 ** 6
+
+
+def selftest_report():
+    """Phase 4, step 8: the CPU report (read-only, no host name nor user) on AMD, an unknown codename, an Intel laptop
+    and the generic backend; the PM table dump only with `pm` and only where the table is not mapped; the hwtest
+    record of this CPU in status.checked, not for another CPU."""
+    global ROOT, FAKE
+    import socket
+    import getpass
+    secrets = {socket.gethostname(), getpass.getuser()}
+    for variant, codename, sections, offered in (("granite", 23, ("### AMD", "Granite Ridge", "mapped"), False),
+                                                 ("granite", 25, ("### AMD", "not in the table", "not mapped"), True),
+                                                 ("intel-laptop", None, ("### Intel", "thermald running", "long_term 28 W"), False),
+                                                 ("generic", None, ("Backend: generic (ryzen_smu driver not loaded",), False)):
+        ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-report-")
+        FAKE = Fake(variant)
+        init_cpu()
+        if codename == 25:   # a family the driver knows and this program does not: its table is offered with consent
+            FAKE.s.update(codename=25, pm_version=0x5C0004)
+            FAKE.save()
+        run(["boot"])
+        r = run(["report"])
+        assert r["pm_offered"] == offered and r["report"].startswith("## CPU report: Silicon Control " + VERSION), r
+        assert all(x in r["report"] for x in sections) and "Checked here: no" in r["report"], r["report"]
+        assert not any(x and x in r["report"] for x in secrets), "host name or user in the report"
+        if offered:
+            dump = run(["report", "pm"])["report"]
+            assert "### PM table 0x5c0004 (457 floats, by index)" in dump and "   0: 00000000" in dump, dump
+        else:
+            expect_err(["report", "pm"], "no dump")
+        assert run(["status"])["checked"] is None and run(["status"])["version"] == VERSION
+        run(["hwtest"])
+        rec = run(["status"])["checked"]
+        assert rec and rec["esito"] == "ok" and "### Last hwtest" in run(["report"])["report"], rec
+    FAKE.s["codename"] = 23   # another CPU in the same machine (the variant above: 25): the record is not its own
+    FAKE.save()
+    assert run(["status"])["checked"] is None
 
 
 def main():
