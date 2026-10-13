@@ -852,9 +852,9 @@ def read_shaper():
     return [shaper_decode(w) for w in smu("shaper_get")[:5]]
 
 
-def read_limits():
-    """Limits and instantaneous values from the PM table; {} if the table is absent."""
-    version, t = pm_table()
+def read_limits(pm=None):
+    """Limits and instantaneous values from the PM table (`pm`: one pm_table() already read); {} if it is absent."""
+    version, t = pm or pm_table()
     if t is None:
         return {}
     return {k: round(t[i], 1) for k, i in family()["pm"].items()}
@@ -1231,9 +1231,9 @@ def pm_cores(version, t):
     return idx if max(max(v) for v in idx.values()) < len(t) else None
 
 
-def sample_cores():
+def sample_cores(pm=None):
     """Voltage (V) and frequency (MHz) per core from the PM table (verified layouts only); otherwise None."""
-    version, t = pm_table()
+    version, t = pm or pm_table()
     m = pm_cores(version, t)
     if not m:
         return None
@@ -1242,11 +1242,11 @@ def sample_cores():
 
 
 def cmd_telemetry(ctx, args):
-    """Quick reads for the GUI monitor (1 Hz): no writes."""
+    """Quick reads for the GUI monitor (1 Hz): no writes. The PM table once (every read is an SMU command)."""
     check_cpu()
-    version, t = pm_table()
+    pm = version, t = pm_table()
     m = pm_cores(version, t)
-    lim = read_limits()
+    lim = read_limits(pm)
     cores = []
     for c in range(CORES):
         try:
@@ -1256,7 +1256,7 @@ def cmd_telemetry(ctx, args):
         temp = round(t[m["temp"][c]], 1) if m else None
         cores.append({"mhz": mhz, "temp": temp})
     co = read_co()
-    sample = sample_cores()
+    sample = sample_cores(pm)
     for c in range(CORES):
         cores[c]["co"] = co[c] if co else None
         cores[c]["volt"] = sample["volt"][c] if sample else None

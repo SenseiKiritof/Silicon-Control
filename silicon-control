@@ -2165,6 +2165,8 @@ class Window(Adw.ApplicationWindow):
         self.pages = [P(self) for P in (MonitorPage, ModesPage, CpuPage, CurvePage, FansPage, PrefsPage)]
         for p in self.pages:
             self.stack.add_titled_with_icon(p, p.NAME, p.TITLE, p.ICON)
+            if hasattr(p, "telemetry"):   # its values as soon as it is shown (window opened, page chosen), not at the next tick
+                p.connect("map", lambda _p: self.tick())
         self.connect("close-request", self.on_close)
         self.reload()
         GLib.timeout_add_seconds(1, self.tick)
