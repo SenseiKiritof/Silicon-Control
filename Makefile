@@ -89,12 +89,14 @@ uninstall:
 	rm -f $(APPDIR)/$(APPID).desktop $(ICONDIR)/$(APPID).svg $(METADIR)/$(APPID).metainfo.xml
 	rm -f $(LOCALEDIR)/*/LC_MESSAGES/ryzenctl.mo $(LOCALEDIR)/*/LC_MESSAGES/ryzen-control.mo
 
-# Checks that need neither root nor hardware: selftest, layout in a scratch root, units,
-# desktop entries, metainfo, the calibration window over every state of the fake backend
-# (needs a display; a fresh fake root each time), once in English and once with the Italian catalog.
+# Checks that need neither root nor hardware: the Italian catalogs against the sources, selftest,
+# layout in a scratch root, units, desktop entries, metainfo, the calibration window over every state
+# of the fake backend (needs a display; a fresh fake root each time), once in English and once with
+# the Italian catalog.
 check: locales
 	@v=$(VERSION); grep -q "^Version: *$$v$$" packaging/ryzen-control.spec && head -1 packaging/debian/changelog | grep -qF "($$v)" \
 	  && grep -q "^pkgver=$$v$$" packaging/PKGBUILD || { echo "VERSION $$v differs in the spec, debian/changelog or PKGBUILD"; exit 1; }
+	python3 po/check.py $(wildcard po/*/it.po)
 	python3 ryzenctl selftest
 	rm -rf "$(TMPROOT)" && $(MAKE) install DESTDIR="$(TMPROOT)" >/dev/null
 	cd "$(TMPROOT)" && find . -type f | sort
