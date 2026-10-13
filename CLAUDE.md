@@ -32,7 +32,8 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   verified with `siliconctl.generic` on the 9800X3D) and the GUI from the capabilities (step 4) done, released as
   v0.2.0 (local tag, installed on the 9800X3D). Phase 3 (Intel): research done (plan revision 5); step 6 (power
   limits, TCC offset, turbo) on fakes only; step 7 (the Intel undervolt) stopped, not implemented (plan revision 6):
-  never write an OC-mailbox module. Next: closing phase 3 (the AMD regression on the 9800X3D, release 0.3.0).
+  never write an OC-mailbox module. Released as v0.3.0 (local tag) after the AMD regression on the 9800X3D. Next:
+  phase 4 (README tables per vendor, the hwtest procedure for owners, the GitHub repository the user creates).
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
