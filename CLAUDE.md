@@ -32,8 +32,10 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
   verified with `siliconctl.generic` on the 9800X3D) and the GUI from the capabilities (step 4) done, released as
   v0.2.0 (local tag, installed on the 9800X3D). Phase 3 (Intel): research done (plan revision 5); step 6 (power
   limits, TCC offset, turbo) on fakes only; step 7 (the Intel undervolt) stopped, not implemented (plan revision 6):
-  never write an OC-mailbox module. Released as v0.3.0 (local tag) after the AMD regression on the 9800X3D. Next:
-  phase 4 (README tables per vendor, the hwtest procedure for owners, the GitHub repository the user creates).
+  never write an OC-mailbox module. Released as v0.3.0 (local tag) after the AMD regression on the 9800X3D. Phase 4
+  (plan revision 7): the CPU report and the local hwtest record (step 8), the in-app check (step 9), README by vendor
+  and the issue template (step 10) done; next step 11, release 0.4.0 after the user's check, then the GitHub
+  repository the user creates.
 - No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
@@ -228,6 +230,14 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
   Raptor Lake microcode) in `status.warnings`, in every PL/TCC write and in the GUI. Kernel errors through
   `sysfs_write` (ENODATA = PL locked by the BIOS). Fake variants `intel`, `intel-raptor`, `intel-laptop`;
   `selftest_intel` fails on any SMU command. Never a raw MSR write, PL4, time windows, `enabled` or psys.
+- **CPU check and report** (phase 4): `report [pm]` (`cmd_report`, read-only: versions, CPU from `cpuinfo()`,
+  backend and why, DMI board/BIOS without serials, cpufreq, sensors, powercap, the driver's cached SMU/PM versions and
+  `pm_table_size` via `smu_info()`, Intel TCC/intel_pstate/thermald, the last hwtest); `pm` appends the PM table only
+  where `pm_offered()` (a table no map here reads: `pm_accepts`) and only with the user's consent. `hwtest` writes
+  `settings.hwtest` {date, esito, id, results}; `status.checked` is it when `cpu_id()` matches. The GUI's
+  `Window.cpu_check` (the Monitor notice "Check this CPU", hidden per CPU id in `ui.json`, and Preferences) runs hwtest
+  and the report, then Copy / Save / Open issue (`issue_url`: the cpu-report template, the body cut at 6000
+  characters with the full report on the clipboard). `VERSION` in `siliconctl` = the Makefile's (`make check`).
 - **Modes** are static (no daemon, the dynamic behaviour is done by PBO): Default / Quiet (preset) /
   Eco (calibrated) / Auto (calibrated) / Performance (preset) / Boost (calibrated) / Custom.
   The three calibrated modes share one CO measurement and one margin (+3): Auto adds the

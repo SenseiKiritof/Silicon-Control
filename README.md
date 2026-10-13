@@ -27,12 +27,16 @@ backend serves every other CPU (verified on the 9800X3D with `siliconctl.generic
 
 ## Processors
 
-Every family has its own SMU allowlist (`FAMILIES` at the top of `siliconctl`, from ZenStates-Core
-and ryzen_smu): a family that is not there gets the [generic backend](#generic-backend), with no SMU command,
-and a function the family does not have is refused, its command never sent. A family is **verified** once a `hwtest` on real hardware
-has written and read back each of its functions; until then it is **expected**: same guarantees
-(values ≤ the BIOS ones, readback of every write, crash-guard), but nobody has tried it yet, and
-`siliconctl status` and the Monitor page say so.
+Each vendor has its own backend; the status says how far a family has been tried. A family is **verified** once a
+`hwtest` on real hardware has written and read back each of its functions; until then it is **expected**: the same
+guarantees (values ≤ the BIOS ones, readback of every write, crash-guard), but nobody has tried it yet, and the
+Monitor proposes the [check](#adding-your-processor) that adds it.
+
+### AMD
+
+Every family has its own SMU allowlist (`FAMILIES` at the top of `siliconctl`, from ZenStates-Core and ryzen_smu): a
+family that is not there gets the [generic backend](#generic-backend), with no SMU command, and a function the family
+does not have is refused, its command never sent.
 
 | Processors | Family (codename) | Status | Functions |
 |---|---|---|---|
@@ -46,30 +50,43 @@ has written and read back each of its functions; until then it is **expected**: 
 | Raven Ridge, Picasso, Dali, Van Gogh (Steam Deck), Krackan… | | generic backend | no readable PM table through ryzen_smu, or an unmapped one: the SMU is not used |
 | HX laptops: 7945HX, 9955HX … | Dragon Range, Fire Range (reported by the driver as Raphael / Granite Ridge) | generic backend | when the machine has a system battery (a laptop): its firmware and battery limits are not handled, the SMU is not used |
 | Threadripper, EPYC | — | generic backend | other interface (HSMP), out of scope: the SMU is not used |
-| Intel Core, desktops and laptops (Haswell … Arrow Lake, Core Ultra) | — | Intel backend, expected | PL1/PL2, temperature limit (TCC offset), turbo, FMax: see [Intel backend](#intel-backend); no undervolt (set it in the BIOS) |
-| Every other CPU: ARM, … | — | generic backend, expected | see [Generic backend](#generic-backend) |
+
+### Intel
+
+| Processors | Status | Functions |
+|---|---|---|
+| Intel Core, desktops and laptops (Haswell … Arrow Lake, Core Ultra) | expected (simulated hardware only) | PL1/PL2, temperature limit (TCC offset), turbo, FMax: see [Intel backend](#intel-backend); no undervolt (set it in the BIOS) |
+
+### Other CPUs
+
+| Processors | Status | Functions |
+|---|---|---|
+| Every other CPU: ARM, … | generic backend, expected | FMax (cpufreq), boost, power profile, fans, temperature and package power where the kernel has them: see [Generic backend](#generic-backend) |
 
 Fans depend on the motherboard (Nuvoton nct67xx chip), not on the processor.
 
 ### Adding your processor
 
-If your processor is *expected*, one check on your machine moves it to *verified*. It takes a few
-seconds and restores everything, but save your work first: it lowers the Curve Optimizer of one
-core by 3 steps for a moment.
+While your processor is *expected*, or on the generic backend, the Monitor says so and offers **Check this CPU**
+(also in Preferences → Hardware check). One check on your machine is enough to add or verify it:
 
-1. Install (below): the service loads the driver and reads the BIOS values of this boot.
-2. `sudo siliconctl status` — the first line shows family, cores, SMU and PM table version.
-3. `sudo siliconctl hwtest` (or Preferences → Hardware check): each command is written slightly
-   away from the BIOS value, read back and brought back; the last line is `esito ok`, or
-   `esito FAILED` with `error:` on the step that failed. Functions the family does not have are
-   `skipped`.
-4. Open an issue with the output of `lscpu | grep 'Model name'`, `sudo siliconctl status` and
-   `sudo siliconctl hwtest`.
+1. Save your work: the check writes each function slightly away from its stock value for a moment, reads it back and
+   restores it (where the Curve Optimizer is available, it lowers it by 3 steps on the last core); it takes a
+   few seconds.
+2. Run the check. On an AMD CPU whose PM table is not mapped yet you can include the table: it is read through the
+   driver (an SMU command), so only if you agree.
+3. In the report that opens, click **Open issue on GitHub**: the issue comes filled in, review it and submit it (a
+   GitHub account is needed; otherwise **Save** the report and send it another way).
+
+From the terminal: `sudo siliconctl hwtest`, then `sudo siliconctl report` (`report pm` adds the PM table where it is
+offered). The report holds the CPU and its interfaces (versions, kernel, distribution, board and BIOS model, the last
+hwtest), never the host name, the user or a serial number. After a successful check the Monitor says "Verified on this
+machine"; the family becomes *verified* for everyone in a later release.
 
 A family that is not in the table gets the generic backend (`unsupported CPU (codename N…)` is the reason
-`siliconctl status` gives) and no SMU command. Adding it needs its command IDs and PM table map from a verified source, a fake variant in
-the selftest (`SILICONCTL_FAKE_FAMILY`) and then the same `hwtest`: open an issue with the codename
-(`cat /sys/kernel/ryzen_smu_drv/codename`) and the PM table version.
+`siliconctl status` gives) and no SMU command. Its report gives the codename and the PM table version (and the
+table itself, if you include it); adding the family needs its command IDs and PM table map from a verified source, a
+fake variant in the selftest (`SILICONCTL_FAKE_FAMILY`) and then the same check.
 
 ### Generic backend
 
@@ -228,8 +245,8 @@ needs root asks for the administrator password once per session; "Stop asking fo
 in Preferences removes even that one. The screenshots below come from the fake backend
 (`make screenshots`), so the values are illustrative.
 
-**Monitor** — the CPU family and its active cores on top (with a note when the family has not
-been verified on hardware yet), Tctl and per-core temperature, PPT and TDC against their limits,
+**Monitor** — the CPU family and its active cores on top (with a note and **Check this CPU** when
+the family has not been verified on hardware yet: see [Adding your processor](#adding-your-processor)), Tctl and per-core temperature, PPT and TDC against their limits,
 MHz, voltage and Curve Optimizer per core, a 60 s graph of Tctl (blue, °C) and PPT (orange, W, its
 limit dashed), fan speeds and power mode. Every per-core view lists only the active cores.
 
@@ -272,7 +289,7 @@ never after a crash; choosing Default leaves it on (nothing is applied until you
 crash warning's "Stay on Default" turns it off; "Start Silicon Control at login" opens the window at every login; "Stop asking
 for the password" writes the polkit rule described in "Safety"; "Allow beyond the stock values"
 raises the PPT/TDC/EDC and FMax ceilings (unlock); "Hardware check" writes and reads back one
-value per command, then restores the baseline.
+value per command, restores the baseline, then shows the CPU report to send.
 
 ![Preferences page](docs/screenshots/preferences.png)
 
@@ -307,6 +324,7 @@ sudo siliconctl default                # everything back to the base (BIOS) valu
 sudo siliconctl reapply                # laptops: the limits the firmware changed, written again (the timer runs it)
 sudo siliconctl trust on|off|status    # polkit rule: your user starts Silicon Control without a password
 sudo siliconctl hwtest                 # reversible test of every command with readback
+sudo siliconctl report [pm]            # the CPU report to send (pm: the PM table, where it is not mapped yet)
 ```
 
 Profiles (`/etc/siliconctl/profiles/<name>.conf`, one line per command, `#` comments):
@@ -522,6 +540,7 @@ make driver-check   # builds the driver in a temporary copy (kbuild does not acc
 make rpm            # tarball from HEAD + RPM in dist/
 make screenshots    # README screenshots: the GUI on a fresh fake backend (needs a display)
 SILICONCTL_ROOT=/tmp/fake python3 siliconctl boot   # CLI on the fake backend, no root
+SILICONCTL_ROOT=/tmp/fake python3 siliconctl report # the CPU report an owner sends (here the fake's)
 ```
 
 Plan, architecture and work status: `docs/plans/2026-10-13-silicon-control.md`; the history of the Ryzen Control
