@@ -132,7 +132,7 @@ make driver-check               # builds the driver in a copy outside the repo (
 make rpm                        # tarball from HEAD (only what is committed) + RPM in dist/; rpmlint NOT installed
 make deb / make arch            # the same tarball, .deb / Arch package built and checked in a podman container
 SILICONCTL_ROOT=/tmp/fake python3 siliconctl boot   # CLI on the fake backend (state in $ROOT/fake_smu.json)
-SILICONCTL_ROOT=$(mktemp -d) SILICONCTL_FAKE_FAMILY=vermeer python3 siliconctl status   # another fake CPU: a key of Fake.VARIANTS, a fresh root each
+SILICONCTL_ROOT=$(mktemp -d) SILICONCTL_FAKE_FAMILY=vermeer python3 siliconctl status   # another fake CPU: a key of Fake.VARIANTS (generic: no ryzen_smu), a fresh root each
 python3 silicon-control --mock  # GUI without driver or pkexec, on the repo's siliconctl (state kept in $XDG_RUNTIME_DIR/silicon-control-mock unless SILICONCTL_ROOT)
 make locales && SILICON_CONTROL_LOCALEDIR=build/locale LANGUAGE=it python3 silicon-control --mock   # the repo's Italian catalogs (otherwise the installed ones)
 make screenshots                # docs/screenshots/*.png from a fresh fake backend (regenerate after visible UI changes)
@@ -191,7 +191,7 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
   (ExecStop) removes `dirty`. A restart in the same boot (`booted` present) only puts `dirty`
   back. `boot` never raises exceptions (the unit must stay active so that ExecStop runs). Escape
   hatch: kernel parameter `siliconctl.off` + blacklisted module (only the service loads it with an
-  explicit modprobe).
+  explicit modprobe); `siliconctl.generic` keeps the service but never uses the SMU.
 - **Takeover of Ryzen Control** (phase 0): `boot` first runs `import_ryzen_control`, once, while siliconctl has no
   state of its own: `/etc/ryzenctl`, `/var/lib/ryzenctl` and, if Ryzen Control ran in this boot, `/run/ryzenctl`
   (not its lock) copied as they are, so the boot goes on as a restart of the same service (no baseline captured over
@@ -203,6 +203,13 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
   `%post`'s `dkms add --rpm_safe_upgrade` (same module-version) cancels the `dkms remove` of ryzen-control's `%preun`,
   as in its own upgrades. Measured: with 0.4.2 dkms refused the install (same `MODULE_VERSION` 0.1.7) and that
   `%preun` removed the only installed copy.
+- **Generic backend** (phase 1): `GENERIC` is a descriptor like a family entry, chosen by `family()` with the reason
+  (`why`, in `status.why_generic`): FMax through cpufreq (`cpufreq_set_max`: every policy within its own
+  `cpuinfo_max_freq`, the exact maximum written back; floor `fmax_floor`, the hardware minimum), the CPU temperature
+  from k10temp, coretemp or a thermal zone (`tctl`), the package power from the RAPL counter between two reads of the
+  same process (`rapl_power`: `serve`'s 1 Hz telemetry; None at a CLI's first read). Everything else follows from
+  the empty allowlist and the baseline keys (Pinnacle Ridge's path). The selftest fails on any SMU command or PM
+  table read on it (`selftest_generic`).
 - **Modes** are static (no daemon, the dynamic behaviour is done by PBO): Default / Quiet (preset) /
   Eco (calibrated) / Auto (calibrated) / Performance (preset) / Boost (calibrated) / Custom.
   The three calibrated modes share one CO measurement and one margin (+3): Auto adds the
@@ -254,9 +261,11 @@ systemd: siliconctl.service, -resume ───┘─ /etc/siliconctl, /var/lib/s
   power source; `reapply` writes only the limit lines of the selected profile (stock ones included) that drifted,
   through the setters (readback, markers),
   never while crashed, during a calibration or after the give-up.
-- Gate: the driver's `codename` must be a key of `FAMILIES` (23 Granite Ridge verified; 20 Raphael,
-  12 Vermeer, 4 Matisse, 10 Pinnacle Ridge, 9 Summit Ridge not verified), otherwise total refusal
-  (`family()`); no readable CPU topology → refusal too. `boost` and `power` are kernel switches
+- Gate: the amd backend only for a driver `codename` that is a key of `FAMILIES` (23 Granite Ridge verified; 20
+  Raphael, 12 Vermeer, 4 Matisse, 10 Pinnacle Ridge, 9 Summit Ridge not verified), not on a laptop unless the family
+  is `mobile`, and without the kernel parameter `siliconctl.generic`; otherwise `family()` returns `GENERIC` (empty
+  allowlist: no SMU command; `pm_table()` returns before reading without a PM map). No readable CPU topology → total
+  refusal. The baseline records its backend (`# backend`): another backend within the same boot refuses CPU writes. `boost` and `power` are kernel switches
   (cpufreq/EPP, no SMU) read back from sysfs.
 - Per-core CO only where the physical core slot is certain (`core_map`/`co_support`): complete CCDs
   (8 cores) map in order with no register read (Zen 4/5 only: on Zen 3, `map_from_down`, the fuses

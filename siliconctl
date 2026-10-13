@@ -174,6 +174,12 @@ FAMILIES.update({
              cmd={k: APU_CMD[k] for k in ("fast_set", "slow_set", "tjmax_set")},
              pm=dict(APU_HEADER, thm_limit=22, tctl=23)),
 })
+for _fam in FAMILIES.values():
+    _fam["backend"] = "amd"
+# The generic backend: kernel interfaces only (cpufreq maximum frequency, boost, EPP / power profiles, the CPU
+# temperature from hwmon or a thermal zone, the package power from the RAPL energy counter), no SMU command and no PM
+# table. family() returns it, with the reason, where the amd backend does not apply.
+GENERIC = {"backend": "generic", "cmd": {}, "pm_prefix": None, "pm": None, "pm_cores": {}, "verified": True, "mobile": True}
 # Never in any entry (sources above): voltage/VID, OC mode, PBO scalar, SMN writes. Dangerous neighbours
 # of the allowed IDs on Zen 2/3: RSMU 0x58 PBO scalar, 0x5A–0x5D OC mode/frequency, 0x61 OC VID.
 SMU_STATUS = {0: "WAITING", 1: "OK", 0xFF: "FAILED", 0xFE: "UNKNOWN_CMD",
@@ -373,7 +379,8 @@ class Fake:
                 "matisse": {"codename": 4, "cores": 8, "ccds": 1, "pm_version": 0x240903},     # 3700X: no CO, no FMax
                 "pinnacle": {"codename": 10, "cores": 8, "ccds": 1, "pm_version": 0},          # 2700X: no SMU command
                 "cezanne": {"codename": 14, "cores": 8, "ccds": 1, "pm_version": 0x400005},    # 5700G: APU, no CO
-                "phoenix": {"codename": 21, "cores": 8, "ccds": 1, "pm_version": 0x4C0006}}    # 8700G
+                "phoenix": {"codename": 21, "cores": 8, "ccds": 1, "pm_version": 0x4C0006},    # 8700G
+                "generic": {"codename": None, "cores": 8, "ccds": 1, "pm_version": 0}}         # no ryzen_smu: GENERIC
     FAN_DIR = HWMON + "/hwmon0"
 
     def __init__(self, variant=None):
@@ -407,6 +414,16 @@ class Fake:
             os.makedirs(P(CPUFREQ), exist_ok=True)
             with open(P(CPUFREQ + "/boost"), "w") as fh:   # the kernel's boost switch (acpi-cpufreq style)
                 fh.write("1")
+            for cpu in range(2 * len(self.cids)):   # one cpufreq policy per CPU, as amd-pstate on the 9800X3D
+                d = P(CPUFREQ + "/policy%d" % cpu)
+                os.makedirs(d)
+                for name, khz in (("cpuinfo_min_freq", 603379), ("cpuinfo_max_freq", 5271622),
+                                  ("scaling_min_freq", 603379), ("scaling_max_freq", 5271622)):
+                    with open("%s/%s" % (d, name), "w") as fh:
+                        fh.write(str(khz))
+            os.makedirs(P("/proc"), exist_ok=True)
+            with open(P("/proc/cpuinfo"), "w") as fh:
+                fh.write("processor\t: 0\nmodel name\t: Fake CPU 8-Core Processor\n")
 
     def core(self, mask):
         """Core index addressed by an SMU core mask, or None: a wrong mask (8 << 20 on two CCDs, the slot
@@ -597,22 +614,50 @@ init_cpu()
 
 
 def family():
-    """FAMILIES entry of this CPU; any other codename is refused in full (fail closed)."""
-    try:
-        code = int(FAKE.s["codename"]) if FAKE else int(read_text(SMU_DIR + "/codename"))
-    except (OSError, ValueError):
-        raise Err(_("ryzen_smu driver not loaded (%s)") % P(SMU_DIR))
-    if code not in FAMILIES:
-        raise Err(_("unsupported CPU (codename %d; supported: %s)") % (
-            code, ", ".join("%s %d" % (f["name"], c) for c, f in sorted(FAMILIES.items()))))
+    """The backend descriptor of this CPU: its FAMILIES entry (backend "amd": the SMU allowlist, the PM map), or
+    GENERIC with the reason (`why`) where the amd backend does not apply: the kernel parameter siliconctl.generic, no
+    ryzen_smu driver, a codename that is not in FAMILIES, a laptop with a desktop family. No SMU command is ever sent
+    on GENERIC (its allowlist is empty); no readable topology is refused in full."""
     if not CORES:
         raise Err(_("CPU topology not readable (/sys/devices/system/cpu)"))
-    if not FAMILIES[code].get("mobile") and system_battery():
-        # the driver reports the HX laptop CPUs as desktops (Dragon Range as Raphael, Fire Range as Granite
-        # Ridge: same CPUID model): firmware, EC and battery limits of a laptop are handled for the APUs only
-        raise Err(_("laptop detected (%s): the driver reports this processor as the desktop %s, a laptop part (Ryzen HX) "
-                    "that is not supported: only the laptop APUs are") % (system_battery(), FAMILIES[code]["name"]))
-    return FAMILIES[code]
+    if "siliconctl.generic" in kernel_cmdline().split():
+        why = _("forced by the kernel parameter siliconctl.generic")
+    else:
+        try:
+            code = int(FAKE.s["codename"]) if FAKE else int(read_text(SMU_DIR + "/codename"))
+        except (OSError, ValueError, TypeError):
+            code, why = None, _("ryzen_smu driver not loaded (%s)") % P(SMU_DIR)
+        if code is not None and code not in FAMILIES:
+            why = _("unsupported CPU (codename %d; supported: %s)") % (
+                code, ", ".join("%s %d" % (f["name"], c) for c, f in sorted(FAMILIES.items())))
+        elif code is not None and not FAMILIES[code].get("mobile") and system_battery():
+            # the driver reports the HX laptop CPUs as desktops (Dragon Range as Raphael, Fire Range as Granite
+            # Ridge: same CPUID model): firmware, EC and battery limits of a laptop are handled for the APUs only
+            why = _("laptop detected (%s): the driver reports this processor as the desktop %s, a laptop part (Ryzen HX) "
+                    "that is not supported: only the laptop APUs are") % (system_battery(), FAMILIES[code]["name"])
+        elif code is not None:
+            return FAMILIES[code]
+    return dict(GENERIC, name=cpu_model(), why=why)
+
+
+def kernel_cmdline():
+    try:
+        return FAKE.s.get("cmdline", "") if FAKE else read_text("/proc/cmdline")
+    except OSError:
+        return ""
+
+
+def cpu_model():
+    """The model name in /proc/cpuinfo (on ARM its "Model" or "Hardware" line), or "CPU"."""
+    try:
+        with open(P("/proc/cpuinfo")) as f:
+            for line in f:
+                key, _sep, value = line.partition(":")
+                if key.strip() in ("model name", "Model", "Hardware") and value.strip():
+                    return value.strip()
+    except OSError:
+        pass
+    return "CPU"
 
 
 def power_supplies():
@@ -668,6 +713,8 @@ def pm_table():
         fam = family()
     except Err:
         return None, None
+    if not fam.get("pm"):   # no map (GENERIC, Raphael, Zen/Zen+): not even read, every read is an SMU command
+        return None, None
     version, t = FAKE.pm() if FAKE else pm_raw()
     prefix = fam.get("pm_prefix")
     if version is None or not ((prefix is not None and version >> 16 == prefix) or version in fam.get("pm_versions", ())):
@@ -692,16 +739,33 @@ def co_support():
     return None
 
 
+CPU_ZONES = ("x86_pkg_temp", "cpu-thermal", "cpu_thermal", "soc_thermal", "cpu")   # thermal zones of the CPU package
+
+
 def tctl():
+    """The CPU temperature in °C: AMD's Tctl (k10temp), otherwise the package sensor of the other CPUs (coretemp, a
+    thermal zone of the CPU); None if unknown."""
     if FAKE:
         return FAKE.s["tctl"]
     for d in sorted(os.listdir(P(HWMON))):
         try:
-            if read_text("%s/%s/name" % (HWMON, d)) == "k10temp":
+            name = read_text("%s/%s/name" % (HWMON, d))
+            if name == "k10temp":
                 # 1600X/1700X/1800X/2700X: Tctl carries a +20/+10 °C offset, k10temp adds the real Tdie as temp2
                 t = 2 if os.path.exists(P("%s/%s/temp2_label" % (HWMON, d))) and read_text("%s/%s/temp2_label" % (HWMON, d)) == "Tdie" else 1
                 return int(read_text("%s/%s/temp%d_input" % (HWMON, d, t))) / 1000.0
-        except OSError:
+            if name == "coretemp":   # Intel: the package sensor
+                for f in sorted(os.listdir(P("%s/%s" % (HWMON, d)))):
+                    if f.endswith("_label") and read_text("%s/%s/%s" % (HWMON, d, f)).startswith("Package id"):
+                        return int(read_text("%s/%s/%s_input" % (HWMON, d, f[:-6]))) / 1000.0
+        except (OSError, ValueError):
+            pass
+    zones = P("/sys/class/thermal")
+    for z in sorted(os.listdir(zones) if os.path.isdir(zones) else []):
+        try:
+            if read_text("/sys/class/thermal/%s/type" % z) in CPU_ZONES:
+                return int(read_text("/sys/class/thermal/%s/temp" % z)) / 1000.0
+        except (OSError, ValueError):
             pass
     return None
 
@@ -842,8 +906,41 @@ def read_co():
 
 
 def read_fmax():
-    """FMax in MHz, or None on families without the command (Zen 3 and older)."""
-    return smu("fmax_get")[0] if "fmax_get" in family()["cmd"] else None
+    """FMax in MHz: the SMU's, or on the generic backend cpufreq's maximum (the highest of the policies); None on
+    families without the command (Zen 3 and older) or without cpufreq."""
+    fam = family()
+    if fam["backend"] == "generic":
+        mhz = cpufreq_khz("scaling_max_freq")
+        return max(mhz) // 1000 if mhz else None
+    return smu("fmax_get")[0] if "fmax_get" in fam["cmd"] else None
+
+
+def cpufreq_policies():
+    d = P(CPUFREQ)
+    return [n for n in sorted(os.listdir(d)) if n.startswith("policy") and os.path.exists("%s/%s/scaling_max_freq" % (d, n))] \
+        if os.path.isdir(d) else []
+
+
+def cpufreq_khz(name):
+    """`name` (scaling_max_freq, cpuinfo_max_freq, …) of every cpufreq policy, in kHz."""
+    return [int(read_text("%s/%s/%s" % (CPUFREQ, n, name))) for n in cpufreq_policies()]
+
+
+def cpufreq_set_max(mhz):
+    """The generic backend's FMax: every policy's scaling_max_freq, within its own hardware maximum (the cores of a
+    hybrid CPU differ); at that maximum its exact value, not the MHz rounding."""
+    for n in cpufreq_policies():
+        top = int(read_text("%s/%s/cpuinfo_max_freq" % (CPUFREQ, n)))
+        with open(P("%s/%s/scaling_max_freq" % (CPUFREQ, n)), "w") as f:
+            f.write(str(top if mhz >= top // 1000 else mhz * 1000))
+
+
+def fmax_floor():
+    """The lowest FMax allowed (MHz): FMAX_MIN for the SMU's, the hardware minimum for cpufreq's."""
+    if family()["backend"] != "generic":
+        return FMAX_MIN
+    low = cpufreq_khz("cpuinfo_min_freq")
+    return -(-max(low) // 1000) if low else FMAX_MIN
 
 
 def read_shaper():
@@ -898,7 +995,7 @@ def cmd_baseline(ctx, args):
     lines = capture_lines()
     src = power_source()   # a laptop: the limits of this power source (source_mismatch)
     write_atomic(P(STATE + "/baseline.conf"), "# baseline captured by siliconctl\n" + ("# source %s\n" % src if src else "")
-                 + "\n".join(lines) + "\n")
+                 + "# backend %s\n" % check_cpu()["backend"] + "\n".join(lines) + "\n")
     touch_sync(P(RUN + "/baseline-done"))
     return values_from_lines(parse_lines("\n".join(lines)))
 
@@ -912,6 +1009,11 @@ def load_baseline(strict=True):
         raise Err(_("baseline missing: CPU writes refused (did the siliconctl service run?)"))
     if strict and not os.path.exists(P(RUN + "/baseline-done")):
         raise Err(_("baseline not captured in this boot: CPU writes refused"))
+    m = re.search(r"^# backend (\w+)$", text, re.M)   # none: captured before the generic backend existed, by the amd one
+    if strict and (m.group(1) if m else "amd") != check_cpu()["backend"]:
+        # the backend changed within the boot (ryzen_smu loaded after it): the other one's values are not ceilings here
+        raise Err(_("the baseline of this boot was captured by the %s backend, the CPU now uses the %s one: CPU writes "
+                    "refused until the next boot") % (m.group(1) if m else "amd", check_cpu()["backend"]))
     why = source_mismatch(text) if strict else None
     if why:
         raise Err(why)
@@ -951,7 +1053,9 @@ def cap_of(base, key, unlock):
     if key == "tjmax":
         return min(base[key], family().get("tjmax_max", TJMAX_ABS_MAX), TJMAX_ABS_MAX)
     if key == "fmax":
-        return base[key] + (FMAX_UNLOCK_EXTRA if unlock else 0)
+        cap = base[key] + (FMAX_UNLOCK_EXTRA if unlock else 0)
+        top = cpufreq_khz("cpuinfo_max_freq") if family()["backend"] == "generic" else []
+        return min(cap, max(top) // 1000) if top else cap
     if key in ("fast", "slow"):   # APUs: no unlock, the stock limits are the ceiling
         return base[key]
     hard = {"ppt": UNLOCK_PPT, "tdc": UNLOCK_TDC, "edc": UNLOCK_EDC}[key]
@@ -1049,11 +1153,13 @@ def cmd_fmax(ctx, args):
     if len(args) != 1:
         raise Err(_("usage: fmax <MHz>"))
     v = to_int(args[0], "fmax")
-    if "fmax_set" not in check_cpu()["cmd"]:
+    fam = check_cpu()
+    if fam["backend"] == "amd" and "fmax_set" not in fam["cmd"]:
         raise Err(_("FMax is not available on this CPU (no SMU command for it): use `boost off` to cap the clock"))
     base = load_baseline()
-    check_range("fmax", v, FMAX_MIN, cap_of(base, "fmax", load_settings()["unlock"]), " MHz")
-    return {"fmax": write_verify(ctx, "fmax", v, lambda x: smu("fmax_set", x & 0xFFFFF), read_fmax, base["fmax"])}
+    check_range("fmax", v, fmax_floor(), cap_of(base, "fmax", load_settings()["unlock"]), " MHz")
+    write = cpufreq_set_max if fam["backend"] == "generic" else lambda x: smu("fmax_set", x & 0xFFFFF)
+    return {"fmax": write_verify(ctx, "fmax", v, write, read_fmax, base["fmax"])}
 
 
 def cmd_shaper(ctx, args):
@@ -1191,14 +1297,16 @@ def cmd_status(ctx, args):
         base = None
     return {
         "cpu": fam["name"], "cores": CORES, "ccds": len({cid // 8 for cid, _cpus in TOPO}),
+        "backend": fam["backend"], "why_generic": fam.get("why"),
         "verified": fam["verified"], "co_unavailable": co_support(),
-        "smu_version": _("fake") if FAKE else read_text(SMU_DIR + "/version"),
-        "pm_version": hex((FAKE.pm() if FAKE else pm_raw())[0] or 0),
+        "smu_version": (_("fake") if FAKE else read_text(SMU_DIR + "/version")) if fam["backend"] == "amd" else None,
+        "pm_version": hex((FAKE.pm() if FAKE else pm_raw())[0] or 0) if fam["backend"] == "amd" else None,
         "co": read_co(), "fmax": read_fmax(), "shaper": read_shaper(),
         "limits": {"ppt": lim.get("ppt_limit"), "tdc": lim.get("tdc_limit"), "edc": lim.get("edc_limit"),
                    "tjmax": lim.get("thm_limit"), "stapm": lim.get("stapm_limit"),   # APUs: STAPM read only
                    "fast": lim.get("fast_limit"), "slow": lim.get("slow_limit")},
-        "now": {"ppt": lim.get("ppt", lim.get("fast")), "tdc": lim.get("tdc"), "tctl": tctl(), "tctl_pm": lim.get("tctl")},
+        "now": {"ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(), "tdc": lim.get("tdc"),
+                "tctl": tctl(), "tctl_pm": lim.get("tctl")},
         "power": power_get(), "boost": boost_get(),
         "baseline": base, "baseline_fresh": os.path.exists(P(RUN + "/baseline-done")),
         "unlock": s["unlock"], "autostart": s["autostart"], "profile": s["profile"],
@@ -1213,8 +1321,9 @@ def caps(base, unlock):
     """Allowed ranges (min, max) for the GUI: same logic as cap_of."""
     out = {"co": list(co_range()), "fan_step_ms": [0, FAN_STEP_MAX_MS], "fan_step_tol_ms": FAN_STEP_TOL_MS}
     for key, lo in (("ppt", PPT_MIN), ("fast", APU_MIN_W), ("slow", APU_MIN_W), ("tdc", TDC_MIN), ("edc", EDC_MIN),
-                    ("fmax", FMAX_MIN), ("tjmax", TJMAX_MIN)):
+                    ("fmax", None), ("tjmax", TJMAX_MIN)):
         if key in base:
+            lo = fmax_floor() if lo is None else lo
             out[key] = [lo, cap_of(base, key, unlock)]
     return out
 
@@ -1243,7 +1352,7 @@ def sample_cores(pm=None):
 
 def cmd_telemetry(ctx, args):
     """Quick reads for the GUI monitor (1 Hz): no writes. The PM table once (every read is an SMU command)."""
-    check_cpu()
+    fam = check_cpu()
     pm = version, t = pm_table()
     m = pm_cores(version, t)
     lim = read_limits(pm)
@@ -1279,7 +1388,8 @@ def cmd_telemetry(ctx, args):
                 info = fan_roles().get(str(n), {})
                 fans.append({"canale": n, "rpm": rpm, "pwm": hw_read("%s/pwm%d" % (fd, n)),
                              "role": info.get("role", "sconosciuto"), "name": info.get("name")})
-    return {"tctl": tctl(), "tccd": tccd, "ppt": lim.get("ppt", lim.get("fast")),   # APUs: the fast PPT's power
+    return {"tctl": tctl(), "tccd": tccd,   # APUs: the fast PPT's power; GENERIC: RAPL's
+            "ppt": lim.get("ppt", lim.get("fast")) if fam["backend"] == "amd" else rapl_power(),
             "ppt_limit": lim.get("ppt_limit", lim.get("fast_limit")),
             "tdc": lim.get("tdc"), "tdc_limit": lim.get("tdc_limit"), "edc_limit": lim.get("edc_limit"),
             "tjmax": lim.get("thm_limit"), "fmax": read_fmax(), "cores": cores, "fans": fans, "power": power_get(),
@@ -1290,24 +1400,27 @@ def fmt_status(st):
     f = lambda v, u="": _("n/a") if v is None else ("%g%s" % (v, u) if isinstance(v, (int, float)) else str(v))
     b = st["baseline"] or {}
     bl = lambda k, u="": (" (base %s)" % f(b.get(k), u)) if k in b else ""
+    generic = st.get("backend") == "generic"
     lines = [
-        _("CPU %s, %d cores, SMU %s, PM table %s") % (st["cpu"], st["cores"], st["smu_version"], st["pm_version"])
+        (_("CPU %s, %d cores, generic backend: %s") % (st["cpu"], st["cores"], st["why_generic"]) if generic else
+         _("CPU %s, %d cores, SMU %s, PM table %s") % (st["cpu"], st["cores"], st["smu_version"], st["pm_version"]))
         + ("" if st["verified"] else _("  (family not verified on hardware yet: run hwtest)")),
         ("CO      " + " ".join("%+d" % v for v in st["co"]) + ("  (base %s)" % " ".join("%+d" % v for v in b["co"]) if "co" in b else ""))
         if st["co"] is not None else _("CO      n/a: %s") % st["co_unavailable"],
         ("Shaper  " + "  ".join("t%d:%+d/%+d/%+d" % (i, *v) for i, v in enumerate(st["shaper"])) + _("  (experimental, not verified)"))
-        if st["shaper"] is not None else _("Shaper  n/a on this CPU"),
+        if st["shaper"] is not None else None if generic else _("Shaper  n/a on this CPU"),
         "FMax    %s MHz%s" % (f(st["fmax"]), bl("fmax", " MHz")),
         _("Limits  ") + "  ".join("%s %s%s" % (name, f(st["limits"].get(k), u), bl(k, u)) for k, name, u in (
             (("stapm", "STAPM", " W"), ("fast", _("fast PPT"), " W"), ("slow", _("slow PPT"), " W"))
             if st["limits"].get("fast") is not None else (("ppt", "PPT", " W"),))
-            + (("tdc", "TDC", " A"), ("edc", "EDC", " A"), ("tjmax", "Tjmax", " °C"))),
+            + (("tdc", "TDC", " A"), ("edc", "EDC", " A"), ("tjmax", "Tjmax", " °C"))) if not generic else None,
         _("Now     PPT %s  TDC %s  Tctl %s") % (f(st["now"]["ppt"], " W"), f(st["now"]["tdc"], " A"), f(st["now"]["tctl"], " °C")),
         _("Power   %s%s, boost %s%s") % (st["power"] or _("n/a"), bl("power"), st["boost"] or _("n/a"), bl("boost")),
         _("Baseline %s, unlock %s, autostart %s, profile %s") % (
             _("of this boot") if st["baseline_fresh"] else (_("stale") if b else _("missing")),
             "ON" if st["unlock"] else "off", "ON" if st["autostart"] else "off", st["profile"] or "-"),
     ]
+    lines = [l for l in lines if l is not None]
     if st.get("power_source"):
         src, rp = {"ac": _("AC power"), "battery": _("battery")}, st.get("reapply") or {}
         lines.append(_("Laptop  on %s, baseline captured on %s") % (src[st["power_source"]], src.get(st["baseline_source"], "?"))
@@ -1483,11 +1596,11 @@ def preset_lines(name, base):
             v = eco[key] if over and pr[key] < 1 and key in eco else max(floor, round(base[key] * pr[key]))
             lines.append("%s %d" % (key, v))
     if "fmax" in base:
-        lines.append("fmax %d" % max(FMAX_MIN, base["fmax"] + pr["fmax"]))
+        lines.append("fmax %d" % max(fmax_floor(), base["fmax"] + pr["fmax"]))
     if "tjmax" in base:
         lines.append("tjmax %d" % (base["tjmax"] if pr["tjmax"] is None else min(base["tjmax"], pr["tjmax"])))
     lines.append("power " + pr["power"])
-    if name == "quiet" and "co_set" not in family()["cmd"] and "boost" in base:
+    if name == "quiet" and "co_set" not in family()["cmd"] and "fmax" not in base and "boost" in base:
         lines.append("boost off")   # Ryzen 1000–3000 and the APUs: no CO nor FMax, the kernel's boost switch is the lever
     d = fans_dir()
     if d:
@@ -1876,6 +1989,21 @@ def rapl_energy():
         return int(read_text(d + "/energy_uj")), int(read_text(d + "/max_energy_range_uj"))
     except (OSError, ValueError):
         return None, None
+
+
+_RAPL_LAST = []   # the previous (µJ, s) of this process: the power between two reads of `serve` (the GUI's 1 Hz telemetry)
+
+
+def rapl_power():
+    """The package power (W) from the RAPL energy counter since the previous call of this process; None at the first
+    call (a CLI command) or without the counter."""
+    e, wrap = rapl_energy()
+    now = time.monotonic()
+    prev = _RAPL_LAST[:]
+    _RAPL_LAST[:] = [] if e is None else [(e, now)]
+    if e is None or not prev or now <= prev[0][1]:
+        return None
+    return round((e - prev[0][0]) % wrap / (now - prev[0][1]) / 1e6, 1)
 
 
 BENCH_METHODS = ("matrixprod", "fft", "double", "int64")   # candidates: the one that draws the most power is measured
@@ -3206,8 +3334,7 @@ def fan_enable(ctx):
     if fans_dir():
         out["chip"] = read_text(fans_dir() + "/name")
         return out
-    cmdline = FAKE.s.get("cmdline", "") if FAKE else read_text("/proc/cmdline")
-    if "acpi_enforce_resources=lax" in cmdline:
+    if "acpi_enforce_resources=lax" in kernel_cmdline():
         raise Err(_("nct6775 loaded but no nct67xx chip in hwmon: Super I/O not reachable via LPC"))
     if FAKE:
         FAKE.s["cmdline"] += " acpi_enforce_resources=lax"
@@ -3253,11 +3380,11 @@ def cmd_hwtest(ctx, args):
     no_co = co_support()
     steps = [("co", [str(last), str(max(CO_MIN, base["co"][last] - 3))], [str(last), str(base["co"][last])]) if not no_co
              else ("co", None, _("skipped: %s") % no_co),
-             ("fmax", [str(max(FMAX_MIN, base["fmax"] - 200))], [str(base["fmax"])]) if "fmax" in base
+             ("fmax", [str(max(fmax_floor(), base["fmax"] - 200))], [str(base["fmax"])]) if "fmax" in base
              else ("fmax", None, _("skipped: not available on this CPU"))]
     for key, floor, delta in (("ppt", PPT_MIN, 12), ("slow", APU_MIN_W, 3), ("fast", APU_MIN_W, 3), ("tdc", TDC_MIN, 10),
                               ("edc", EDC_MIN, 10), ("tjmax", TJMAX_MIN, 10)):
-        if key in ("slow", "fast") and key not in base:   # desktop families: not a function of theirs
+        if key + "_set" not in family()["cmd"]:   # not a function of this CPU (fast/slow on desktops, GENERIC)
             continue
         if key in base:
             steps.append((key, [str(max(floor, base[key] - delta))], [str(base[key])]))
@@ -3526,9 +3653,10 @@ def selftest():
     assert shaper_arg(2, -10, -5, 3) == (3 << 24) | (0xFB << 16) | (0xF6 << 8) | 0x80 | 2
     assert shaper_decode(shaper_arg(4, -50, 0, 30)) == [-50, 0, 30]
     # CPU gate
-    FAKE.s["codename"] = 25   # Storm Peak (Threadripper 7000): not in FAMILIES
+    FAKE.s["codename"] = 25   # Storm Peak (Threadripper 7000): not in FAMILIES, the generic backend (no SMU command)
     FAKE.save()
-    expect_err(["status"], "unsupported")
+    st = run(["status"])
+    assert st["backend"] == "generic" and "codename 25" in st["why_generic"] and st["co"] is None, st
     FAKE.s["codename"] = 23
     FAKE.save()
     # status
@@ -3733,12 +3861,15 @@ def selftest():
     FAKE.s["pm_version"] = 0x620105
     FAKE.save()
     run(["autostart", "off"])
-    # 9. boot with the SMU missing: baseline_error, no exception
+    # 9. boot with a codename the driver does not know: the generic backend, its own baseline, no exception
     FAKE.s["codename"] = 0
     FAKE.save()
     reboot()
     out = run(["boot"])
-    assert "baseline_error" in out
+    assert "baseline_error" not in out and run(["status"])["backend"] == "generic" and "co" not in run(["baseline", "show"])
+    FAKE.s["codename"] = 23   # ryzen_smu working again within the same boot: the generic baseline is no ceiling for it
+    FAKE.save()
+    expect_err(["fmax", "5000"], "captured by the generic backend")
     FAKE.s["codename"] = 23
     FAKE.save()
     reboot()
@@ -4265,6 +4396,7 @@ def selftest():
     selftest_laptop()
     selftest_takeover()
     selftest_transport()
+    selftest_generic()
     print("selftest ok (%s)" % ROOT)
 
 
@@ -4596,8 +4728,9 @@ def selftest_variants():
                 fh.write(v + "\n")
         if name == "hidpp_battery_0":
             assert run(["status"])["cpu"] == "Granite Ridge"
-    expect_err(["status"], "laptop detected (BAT0)")
-    expect_err(["co", "0", "-5"], "laptop detected")
+    st = run(["status"])   # the generic backend: no SMU command on a laptop part (its firmware limits are not handled)
+    assert st["backend"] == "generic" and "laptop detected (BAT0)" in st["why_generic"], st
+    expect_err(["co", "0", "-5"], "not available")
     # ---- desktop APUs (Cezanne 5700G, Phoenix 8700G): fast/slow PPT, Tctl, TDC/EDC through MP1, read back from
     # the PM table; STAPM read only; no CO, no FMax (in a laptop: selftest_laptop) ----
     for variant, name in (("cezanne", "Cezanne"), ("phoenix", "Phoenix")):
@@ -4915,6 +5048,63 @@ def selftest_transport():
                 fd = os.open(P(d + "/lock"), os.O_RDWR)
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 os.close(fd)
+    finally:
+        FAKE = fake
+
+
+def selftest_generic():
+    """Phase 1: the generic backend (no ryzen_smu, or siliconctl.generic on an AMD CPU): kernel interfaces only, not a
+    single SMU command nor PM table read; FMax through every cpufreq policy, read back, the hardware maximum written back
+    exactly; presets, hwtest, refusals; the CPU temperature from coretemp or a thermal zone; the package power from RAPL."""
+    global ROOT, FAKE
+
+    def no_smu(*_a):
+        raise AssertionError("SMU command or PM table read on the generic backend")
+    for variant, cmdline in (("generic", "quiet"), ("granite", "quiet siliconctl.generic")):
+        ROOT = tempfile.mkdtemp(prefix="siliconctl-selftest-generic-")
+        FAKE = Fake(variant)
+        init_cpu()
+        FAKE.s["cmdline"] = cmdline
+        FAKE.save()
+        FAKE.smu = FAKE.pm = FAKE.smn = no_smu
+        assert "baseline_error" not in run(["boot"])
+        st = run(["status"])
+        why = "siliconctl.generic" if variant == "granite" else "not loaded"
+        assert st["backend"] == "generic" and why in st["why_generic"] and st["cpu"] == "Fake CPU 8-Core Processor", st
+        assert st["co"] is None and st["fmax"] == 5271 and st["smu_version"] is None and st["caps"]["fmax"] == [604, 5271], st
+        assert "generic backend" in fmt_status(st) and "Shaper" not in fmt_status(st), fmt_status(st)
+        base = run(["baseline", "show"])
+        assert base["fmax"] == 5271 and not {"co", "ppt", "tdc", "edc", "tjmax", "fast", "slow"} & set(base), base
+        assert run(["fmax", "4500"]) == {"fmax": 4500} and read_text(CPUFREQ + "/policy15/scaling_max_freq") == "4500000"
+        assert run(["fmax", "5271"]) == {"fmax": 5271} and read_text(CPUFREQ + "/policy0/scaling_max_freq") == "5271622"
+        for argv, err in ((["fmax", "5272"], "out of range"), (["fmax", "603"], "out of range"), (["ppt", "100"], "baseline"),
+                          (["tjmax", "80"], "baseline"), (["co", "0", "-5"], "not available"), (["shaper", "raw"], "not available"),
+                          (["autotune", "start", "eco"], "Curve Optimizer")):
+            expect_err(argv, err)
+        pl = run(["preset", "quiet", "show"])["lines"]
+        assert "fmax 4871" in pl and "boost off" not in pl and not any(l.split()[0] in ("co", "ppt", "tjmax") for l in pl), pl
+        r = run(["hwtest"])
+        assert r["fmax"] == "ok (5071 -> 5271)" and r["boost"].startswith("ok") and r["esito"] == "ok" and "ppt" not in r, r
+    # the package power: RAPL energy between two reads of the same process (wrapping), none at the first
+    d = "/sys/class/powercap/intel-rapl:0"
+    for name, v in (("energy_uj", 10 ** 6), ("max_energy_range_uj", 2 ** 32)):
+        write_atomic(P(d + "/" + name), str(v))
+    del _RAPL_LAST[:]
+    assert run(["telemetry"])["ppt"] is None
+    _RAPL_LAST[:] = [(2 ** 32 - 49 * 10 ** 6, time.monotonic() - 2)]   # 50 J in 2 s across the wrap of the counter
+    assert 24 < run(["telemetry"])["ppt"] < 26
+    # the CPU temperature of the other CPUs: the coretemp package, otherwise a thermal zone of the CPU
+    fake, FAKE = FAKE, None
+    try:
+        for name, v in (("name", "coretemp"), ("temp2_label", "Core 0"), ("temp2_input", 40000),
+                        ("temp1_label", "Package id 0"), ("temp1_input", 55000)):
+            write_atomic(P(HWMON + "/hwmon1/" + name), str(v))
+        assert tctl() == 55.0
+        write_atomic(P(HWMON + "/hwmon1/name"), "nvme")
+        write_atomic(P("/sys/class/thermal/thermal_zone0/type"), "acpitz")
+        write_atomic(P("/sys/class/thermal/thermal_zone1/type"), "x86_pkg_temp")
+        write_atomic(P("/sys/class/thermal/thermal_zone1/temp"), "61000")
+        assert tctl() == 61.0
     finally:
         FAKE = fake
 
