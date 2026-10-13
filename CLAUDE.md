@@ -24,9 +24,9 @@ in the same folder (`docs/plans/YYYY-MM-DD-<topic>.md`).
 - Its history is not in this repository: the commit messages that explain the code and its hardware lessons
   are in `../Ryzen Control` (`git -C "../Ryzen Control" log -S'<text>'` or `log -L` when the reason for a line
   is unclear; `../Ryzen Control/CLAUDE.md` has the phase-by-phase history).
-- Nothing of the Silicon Control plan is done yet. Start by confirming the open decisions of the plan with the
-  user, then phase 0, step 1 (the rename).
-- No git remote yet: the user creates the GitHub repository when ready.
+- The open decisions are confirmed (plan revision 2: version 0.1.0, Ryzen Control superseded, AMD + Intel +
+  generic, no Intel hardware, Italian protocol keys kept). Next: phase 0, step 1 (the rename).
+- No git remote yet: the user creates `SenseiKiritof/Silicon-Control` at phase 4; everything stays local until then.
 
 ## Working with the user
 
